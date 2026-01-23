@@ -27,9 +27,9 @@ async def is_chat_creator(bot: Bot, chat_id: int, user_id: int) -> bool:
     except Exception:
         return False
 
-async def can_manage_chat(bot: Bot, chat_id: int, user_id: int, username: str | None, db: DB) -> bool:
+async def can_manage_chat(bot: Bot, chat_id: int, user_id: int, username: str | None, db: DB, config: Config) -> bool:
     # 1) Bot egasi (global)
-    if (username or "").lower() == OWNER_USERNAME.lower():
+    if (username or "").lower() == config.owner_username.lower():
         return True
 
     # 2) Global super-admin (agar qoldirmoqchi bo‘lsangiz)
