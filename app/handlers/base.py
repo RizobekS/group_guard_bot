@@ -40,8 +40,9 @@ def settings_text(s) -> str:
         f"• Anti-same: {_on(s.antisame_enabled)} ({s.antisame_minutes} min)\n"
     )
 
-def _add_to_group_kb(bot_username: str):
+def _add_to_group_kb(bot_username: str, video_url: str):
     kb = InlineKeyboardBuilder()
+    kb.button(text="🎥 Video qo‘llanma", url=video_url)
     kb.button(text="➕ Guruhga qo‘shish", url=f"https://t.me/{bot_username}?startgroup=true")
     kb.adjust(1)
     return kb.as_markup()
@@ -246,7 +247,7 @@ async def cmd_start(message: Message, db: DB, config: Config):
             message.from_user.full_name or ""
         )
         await db.touch_chat(message.chat.id, message.chat.title or "")
-        await message.answer(text, reply_markup=_add_to_group_kb(me.username))
+        await message.answer(text, reply_markup=_add_to_group_kb(me.username, config.video_url))
         return
 
     # guruhda /start ishlatilsa: holatni ko‘rsatib qo‘yamiz
