@@ -199,7 +199,7 @@ HELP_ALL = (
 
 
 @router.message(Command("start", "holat"))
-async def cmd_start(message: Message, db: DB):
+async def cmd_start(message: Message, db: DB, config: Config):
     me = await message.bot.get_me()
     if message.chat.type == "private":
         text = (
@@ -229,10 +229,16 @@ async def cmd_start(message: Message, db: DB):
             "❓ Buyruqlarni ko‘rish • /help — barcha buyruqlar ro‘yxati\n\n"
 
             "─────────────────\n\n"
+
+            "👮 Admin bilan bog‘lanish\n"
+            f"• Admin: @{config.owner_username}\n"
+            "• Savol, taklif yoki muammo bo‘lsa — admin bilan bog‘laning\n\n"
+
+            "─────────────────\n\n"
             "💡 Eslatma\n"
             "- Botni superguruhga qo‘shish va admin qilish shart\n"
             "- Foydalanuvchi /start bosgan zahoti bot avtomatik ishga tushadi\n"
-            "- Guruh to‘liq nazorat ostida bo‘ladi"
+            "- Guruh 24/7 to‘liq nazorat ostida bo‘ladi"
         )
         await db.touch_user(
             message.from_user.id,
