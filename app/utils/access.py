@@ -43,7 +43,7 @@ async def can_manage_chat(bot: Bot, chat_id: int, user_id: int, username: str | 
     # 4) Shu chat bo‘yicha bot admin
     return await db.is_chat_bot_admin(chat_id, user_id)
 
-async def can_manage_bot(message: Message, db: DB) -> bool:
+async def can_manage_bot(message: Message, db: DB, config: Config) -> bool:
     if not message.chat or not message.from_user:
         return False
     return await can_manage_chat(
@@ -51,5 +51,6 @@ async def can_manage_bot(message: Message, db: DB) -> bool:
         message.chat.id,
         message.from_user.id,
         message.from_user.username,
-        db
+        db,
+        config,
     )

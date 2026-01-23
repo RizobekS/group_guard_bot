@@ -3,6 +3,8 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import Command, CommandObject
+
+from ..config import Config
 from ..db import DB
 from .base import settings_text
 from ..utils.admin import is_admin
@@ -23,9 +25,9 @@ def _parse_int(arg: str, min_v: int, max_v: int) -> int | None:
     return v
 
 @router.message(Command("set"))
-async def cmd_set_channel(message: Message, command: CommandObject, db: DB):
+async def cmd_set_channel(message: Message, command: CommandObject, db: DB, config: Config):
 
-    if not await can_manage_bot(message, db):
+    if not await can_manage_bot(message, db, config):
         return
 
     if not command.args:
@@ -42,15 +44,15 @@ async def cmd_set_channel(message: Message, command: CommandObject, db: DB):
     await message.reply(f"✅ Force kanal ulandi: @{ch}\nEndi obuna bo‘lmaganlar yozolmaydi.")
 
 @router.message(F.text == "/unlink")
-async def cmd_unlink_channel(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_unlink_channel(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     await db.update_settings(message.chat.id, linked_channel="")
     await message.reply("✅ Force kanal o‘chirildi.")
 
 @router.message(F.text.startswith("/limit"))
-async def cmd_limit(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_limit(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -65,8 +67,8 @@ async def cmd_limit(message: Message, db: DB):
     await message.reply("✅ Anti-raid limit yangilandi.\n\n" + settings_text(s))
 
 @router.message(F.text.startswith("/oyna"))
-async def cmd_oyna(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_oyna(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -81,8 +83,8 @@ async def cmd_oyna(message: Message, db: DB):
     await message.reply("✅ Anti-raid oyna yangilandi.\n\n" + settings_text(s))
 
 @router.message(F.text.startswith("/yopish"))
-async def cmd_yopish(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_yopish(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -111,8 +113,8 @@ def _panel_kb(s) -> InlineKeyboardBuilder:
     return kb
 
 @router.message(F.text == "/antiraidpanel")
-async def cmd_antiraidpanel(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_antiraidpanel(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     s = await db.get_or_create_settings(message.chat.id)
     kb = _panel_kb(s).as_markup()
@@ -120,7 +122,7 @@ async def cmd_antiraidpanel(message: Message, db: DB):
 
 
 @router.callback_query(F.data.startswith("ar:"))
-async def cb_antiraidpanel(query: CallbackQuery, db: DB):
+async def cb_antiraidpanel(query: CallbackQuery, db: DB, config: Config):
     if not query.message:
         return
 
@@ -129,7 +131,8 @@ async def cb_antiraidpanel(query: CallbackQuery, db: DB):
         query.message.chat.id,
         query.from_user.id,
         query.from_user.username,
-        db
+        db,
+        config
     )
     if not ok:
         await query.answer("Ruxsat yo‘q.", show_alert=True)
@@ -154,9 +157,9 @@ async def cb_antiraidpanel(query: CallbackQuery, db: DB):
     await query.answer("✅ Yangilandi")
 
 @router.message(F.text.startswith("/botadmin_add"))
-async def cmd_botadmin_add(message: Message, db: DB):
+async def cmd_botadmin_add(message: Message, db: DB, config: Config):
     # chat creator / bot owner / global bot admin ruxsat
-    if not await can_manage_bot(message, db):
+    if not await can_manage_bot(message, db, config):
         return
 
     if not message.reply_to_message:
@@ -168,8 +171,8 @@ async def cmd_botadmin_add(message: Message, db: DB):
     await message.reply("✅ Guruh uchun bot admin qo‘shildi.")
 
 @router.message(F.text.startswith("/botadmin_del"))
-async def cmd_botadmin_del(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_botadmin_del(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
 
     if not message.reply_to_message:
@@ -183,16 +186,16 @@ async def cmd_botadmin_del(message: Message, db: DB):
 def _norm_arg(s: str) -> str:
     return (s or "").strip().lower()
 
-async def _require_bot_admin(message: Message, db: DB) -> bool:
+async def _require_bot_admin(message: Message, db: DB, config: Config) -> bool:
     if message.chat.type not in ("group", "supergroup"):
         return False
-    if not await can_manage_bot(message, db):
+    if not await can_manage_bot(message, db, config):
         await message.reply("Bu buyruq faqat bot egasi yoki bot adminlari uchun.")
         return False
     return True
 
-async def _toggle(message: Message, db: DB, field: str, label: str):
-    if not await _require_bot_admin(message, db):
+async def _toggle(message: Message, db: DB, field: str, label: str, config: Config):
+    if not await _require_bot_admin(message, db, config):
         return
 
     parts = message.text.split(maxsplit=1)
@@ -211,41 +214,41 @@ async def _toggle(message: Message, db: DB, field: str, label: str):
         await message.reply(f"Noto‘g‘ri parametr. {parts[0]} yoq yoki {parts[0]} o‘chir")
 
 @router.message(F.text.startswith("/ssilka"))
-async def cmd_ssilka(message: Message, db: DB):
-    await _toggle(message, db, "block_links", "Ssilka blok")
+async def cmd_ssilka(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "block_links", "Ssilka blok", config)
 
 @router.message(F.text.startswith("/reklama"))
-async def cmd_reklama(message: Message, db: DB):
-    await _toggle(message, db, "block_ads", "Reklama blok")
+async def cmd_reklama(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "block_ads", "Reklama blok", config)
 
 @router.message(F.text.startswith("/arab"))
-async def cmd_arab(message: Message, db: DB):
-    await _toggle(message, db, "block_arab", "Arab blok")
+async def cmd_arab(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "block_arab", "Arab blok", config)
 
 @router.message(F.text.startswith("/sokin"))
-async def cmd_sokin(message: Message, db: DB):
-    await _toggle(message, db, "block_swear", "So'kinish blok")
+async def cmd_sokin(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "block_swear", "So'kinish blok", config)
 
 @router.message(F.text.startswith("/kanalpost"))
-async def cmd_kanalpost(message: Message, db: DB):
-    await _toggle(message, db, "block_channel_posts", "Kanal post blok")
+async def cmd_kanalpost(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "block_channel_posts", "Kanal post blok", config)
 
 @router.message(F.text.startswith("/xizmat"))
-async def cmd_xizmat(message: Message, db: DB):
-    await _toggle(message, db, "hide_service_msgs", "Xizmat xabar yashirish")
+async def cmd_xizmat(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "hide_service_msgs", "Xizmat xabar yashirish", config)
 
 @router.message(F.text.startswith("/antisame"))
-async def cmd_antisame(message: Message, db: DB):
-    await _toggle(message, db, "antisame_enabled", "Anti-same")
+async def cmd_antisame(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "antisame_enabled", "Anti-same", config)
 
 @router.message(F.text.startswith("/antiflood"))
-async def cmd_antiflood(message: Message, db: DB):
-    await _toggle(message, db, "antiflood_enabled", "Anti-flood")
+async def cmd_antiflood(message: Message, db: DB, config: Config):
+    await _toggle(message, db, "antiflood_enabled", "Anti-flood", config)
 
 
 @router.message(Command("settime"))
-async def cmd_settime(message: Message, command: CommandObject, db: DB):
-    if not await _require_bot_admin(message, db):
+async def cmd_settime(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await _require_bot_admin(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip().isdigit():
@@ -261,8 +264,8 @@ async def cmd_settime(message: Message, command: CommandObject, db: DB):
     await message.reply(f"✅ Anti-same vaqti: {minutes} minut.")
 
 @router.message(Command("setflood"))
-async def cmd_setflood(message: Message, command: CommandObject, db: DB):
-    if not await _require_bot_admin(message, db):
+async def cmd_setflood(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await _require_bot_admin(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip().isdigit():
@@ -278,8 +281,8 @@ async def cmd_setflood(message: Message, command: CommandObject, db: DB):
     await message.reply(f"✅ Flood limiti: {n} ta xabar / { (await db.get_or_create_settings(message.chat.id)).flood_window_sec }s")
 
 @router.message(Command("setfloodtime"))
-async def cmd_setfloodtime(message: Message, command: CommandObject, db: DB):
-    if not await _require_bot_admin(message, db):
+async def cmd_setfloodtime(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await _require_bot_admin(message, db, config):
         return
 
     parts = message.text.split(maxsplit=1)
@@ -299,8 +302,8 @@ async def cmd_setfloodtime(message: Message, command: CommandObject, db: DB):
 
 
 @router.message(F.text.startswith("/yomonqosh"))
-async def cmd_yomonqosh(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_yomonqosh(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
 
     parts = message.text.split(maxsplit=1)
@@ -321,8 +324,8 @@ async def cmd_yomonqosh(message: Message, db: DB):
 
 # Не по ТЗ, но полезно:
 @router.message(F.text.startswith("/yomondel"))
-async def cmd_yomondel(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_yomondel(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -333,8 +336,8 @@ async def cmd_yomondel(message: Message, db: DB):
     await message.reply(f"✅ O‘chirildi: <code>{word}</code>")
 
 @router.message(F.text == "/yomonlist")
-async def cmd_yomonlist(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_yomonlist(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     words = await db.list_bad_words(message.chat.id, limit=100)
     if not words:
@@ -345,8 +348,8 @@ async def cmd_yomonlist(message: Message, db: DB):
 
 
 @router.message(Command("add"))
-async def cmd_add(message: Message, command: CommandObject, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_add(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
 
     if not command.args:
@@ -371,8 +374,8 @@ async def cmd_add(message: Message, command: CommandObject, db: DB):
 
 
 @router.message(Command("textforce"))
-async def cmd_textforce(message: Message, command: CommandObject, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_textforce(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if not command.args:
         await message.reply("Foydalanish: /textforce <matn>\nMasalan: /textforce Guruhda yozish uchun odam qo‘shing.")
@@ -382,8 +385,8 @@ async def cmd_textforce(message: Message, command: CommandObject, db: DB):
 
 
 @router.message(Command("text_time"))
-async def cmd_texttime(message,command: CommandObject, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_texttime(message,command: CommandObject, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if not command.args:
         await message.reply("Foydalanish: /texttime <matn>\nMasalan: /texttime 10")
@@ -393,8 +396,8 @@ async def cmd_texttime(message,command: CommandObject, db: DB):
 
 
 @router.message(F.text.startswith("/priv"))
-async def cmd_priv(message, db):
-    if not await can_manage_bot(message, db):
+async def cmd_priv(message, db, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if not message.reply_to_message:
         await message.reply("Reply qiling.")
@@ -404,8 +407,8 @@ async def cmd_priv(message, db):
 
 
 @router.message(F.text.startswith("/delson"))
-async def cmd_delson(message, db):
-    if not await can_manage_bot(message, db):
+async def cmd_delson(message, db, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if not message.reply_to_message:
         return
@@ -413,9 +416,9 @@ async def cmd_delson(message, db):
     await message.reply("Hisob tozalandi.")
 
 @router.message(F.text == "/clean")
-async def cmd_clean(message: Message, db: DB, antiflood):
+async def cmd_clean(message: Message, db: DB, antiflood, config: Config):
     # Только владелец/бот-админ
-    if not await can_manage_bot(message, db):
+    if not await can_manage_bot(message, db, config):
         return
     if message.chat.type not in ("group", "supergroup"):
         return
@@ -439,8 +442,8 @@ async def cmd_clean(message: Message, db: DB, antiflood):
 
 
 @router.message(F.text == "/deforce")
-async def cmd_deforce(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_deforce(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if message.chat.type not in ("group", "supergroup"):
         return
@@ -452,8 +455,8 @@ async def cmd_deforce(message: Message, db: DB):
 
 
 @router.message(Command("/unmute"))
-async def cmd_unmute(message: Message, db: DB):
-    if not await can_manage_bot(message, db):
+async def cmd_unmute(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
         return
     if message.chat.type not in ("group", "supergroup"):
         return
