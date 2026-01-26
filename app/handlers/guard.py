@@ -406,8 +406,20 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         except Exception:
             pass
 
-    # 2) anti-raid
     join_count = len(message.new_chat_members or [])
+    if join_count <= 0:
+        return
+    inviter = message.from_user
+    new_ids = {m.id for m in (message.new_chat_members or [])}
+    if inviter and inviter.id in new_ids:
+        # человек сам вошёл, не считаем как "добавил людей"
+        inviter = None
+
+    if s.force_add_enabled and message.from_user:
+        inviter = message.from_user
+        await db.inc_force_progress(message.chat.id, inviter.id, join_count)
+
+    # 2) anti-raid
     window_hours = int(s.raid_window_min)
     close_hours = int(s.raid_close_min)
     window_sec = window_hours * 3600
@@ -434,15 +446,7 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
     except Exception:
         return
 
-    if s.force_add_enabled and message.from_user:
-        inviter = message.from_user
-        await db.inc_force_progress(
-            message.chat.id,
-            inviter.id,
-            len(message.new_chat_members)
-        )
-
-    # Через N минут открываем обратно
+    # Через N секунд открываем обратно
     async def _reopen():
         await asyncio.sleep(close_sec)
         try:
