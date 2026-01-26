@@ -161,7 +161,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     text = _get_text(message)
 
     # 0) Anti-flood
-    if s.antiflood_enabled and not tg_admin:
+    if s.antiflood_enabled:
         exceeded = antiflood.hit(
             chat_id=chat_id,
             user_id=user.id,
@@ -179,7 +179,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             return
 
     # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel and not tg_admin:
+    if s.linked_channel:
         res = await _is_subscribed(message.bot, s.linked_channel, user.id)
         if res is False:
             # удаляем сообщение и даем инструкцию (тихо и без спама)
@@ -275,7 +275,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     # 2) Anti-same
-    if s.antisame_enabled and text.strip() and not tg_admin:
+    if s.antisame_enabled and text.strip():
         h = text_hash(text)
         log = await db.get_or_create_msglog(chat_id, user.id)
         minutes = s.antisame_minutes
