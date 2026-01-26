@@ -161,7 +161,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     text = _get_text(message)
 
     # 0) Anti-flood
-    if s.antiflood_enabled and (not tg_admin):
+    if s.antiflood_enabled and not tg_admin:
         exceeded = antiflood.hit(
             chat_id=chat_id,
             user_id=user.id,
@@ -179,7 +179,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             return
 
     # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel and (not tg_admin):
+    if s.linked_channel and not tg_admin:
         res = await _is_subscribed(message.bot, s.linked_channel, user.id)
         if res is False:
             # удаляем сообщение и даем инструкцию (тихо и без спама)
@@ -209,7 +209,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
     # Force add
-    if s.force_add_enabled and (not tg_admin):
+    if s.force_add_enabled and not tg_admin:
         if not await db.is_force_priv(chat_id, user.id):
             added = await db.get_force_progress(chat_id, user.id)
             required = int(s.force_add_required)
@@ -275,7 +275,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     # 2) Anti-same
-    if s.antisame_enabled and text.strip() and (not tg_admin):
+    if s.antisame_enabled and text.strip() and not tg_admin:
         h = text_hash(text)
         log = await db.get_or_create_msglog(chat_id, user.id)
         minutes = s.antisame_minutes
