@@ -55,7 +55,7 @@ async def cmd_limit(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
-    if len(parts) <= 2:
+    if len(parts) < 2:
         await message.reply("Foydalanish: /limit <son>  (masalan: /limit 200)")
         return
     v = _parse_int(parts[1], 5, 5000)
@@ -71,7 +71,7 @@ async def cmd_oyna(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return
     parts = message.text.split(maxsplit=1)
-    if len(parts) <= 2:
+    if len(parts) < 2:
         await message.reply("Foydalanish: /oyna <min>  (masalan: /oyna 1)")
         return
     v = _parse_int(parts[1], 1, 60)
