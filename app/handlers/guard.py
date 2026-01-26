@@ -13,6 +13,7 @@ from ..utils.access import can_manage_chat
 from ..utils.access import can_manage_bot
 from ..utils.moderation import has_link, has_arabic, looks_like_ads, is_channel_post, text_hash, mute_user
 from ..utils.antiraid import AntiRaid
+from ..utils.admin import is_admin
 
 router = Router()
 
@@ -149,6 +150,10 @@ async def _handle_violation(
 async def _process(message: Message, db: DB, antiflood, config: Config):
     chat_id = message.chat.id
     user = message.from_user
+    try:
+        tg_admin = await is_admin(message.bot, chat_id, user.id)
+    except Exception:
+        tg_admin = False
     if not user:
         return
 
@@ -156,19 +161,14 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     text = _get_text(message)
 
     # 0) Anti-flood
-    if s.antiflood_enabled:
+    if s.antiflood_enabled and (not tg_admin):
         exceeded = antiflood.hit(
             chat_id=chat_id,
             user_id=user.id,
             window_sec=s.flood_window_sec,
             max_msgs=s.flood_max_msgs,
         )
-        m = _mention(user)
         if exceeded:
-            try:
-                await message.delete()
-            except Exception:
-                pass
             await _handle_violation(
                 message, db, config,
                 rule="antiflood",
@@ -176,11 +176,10 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                 mute_text="Belgilangan vaqt ichida keragidan ortiq habar yuborganingiz uchun 2 daqiqaga bloklandingiz.",
                 mute_minutes=2
             )
-            # если muted=False (например owner) просто продолжаем удалять спам-сообщения
             return
 
     # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel:
+    if s.linked_channel and (not tg_admin):
         res = await _is_subscribed(message.bot, s.linked_channel, user.id)
         if res is False:
             # удаляем сообщение и даем инструкцию (тихо и без спама)
@@ -210,7 +209,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
     # Force add
-    if s.force_add_enabled:
+    if s.force_add_enabled and (not tg_admin):
         if not await db.is_force_priv(chat_id, user.id):
             added = await db.get_force_progress(chat_id, user.id)
             required = int(s.force_add_required)
@@ -276,7 +275,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     # 2) Anti-same
-    if s.antisame_enabled and text.strip():
+    if s.antisame_enabled and text.strip() and (not tg_admin):
         h = text_hash(text)
         log = await db.get_or_create_msglog(chat_id, user.id)
         minutes = s.antisame_minutes
@@ -321,24 +320,31 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             await message.delete()
         except Exception:
             pass
-
         hits = await db.inc_ads_hits(chat_id, user.id, day=date.today(), inc=1)
 
         m = _mention(user)
         if hits <= s.ads_daily_limit:
-            await _send_temp(
-                message,
-                f"{m} reklama yubormang. Limit: {s.ads_daily_limit}/kun. Hozir: {hits}.",
-                seconds=10
+            msg = _append_force_text(
+                s,
+                f"{m} reklama yubormang. Limit: {s.ads_daily_limit}/kun. Hozir: {hits}."
             )
+            await _send_temp(message, msg, seconds=10)
             return
 
         # превысил лимит
         muted = await mute_user(message.bot, chat_id, user.id, minutes=300)
         if muted:
-            await _send_temp(message, f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)", seconds=10)
+            await _send_temp(
+                message,
+                _append_force_text(s, f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)"),
+                seconds=10
+            )
         else:
-            await _send_temp(message, f"{m} reklama limitidan oshdingiz (lekin cheklashga ruxsat yo‘q)", seconds=10)
+            await _send_temp(
+                message,
+                _append_force_text(s, f"{m} reklama limitidan oshdingiz (lekin cheklashga ruxsat yo‘q)"),
+                seconds=10
+            )
         return
 
     if s.block_swear and text.strip():
