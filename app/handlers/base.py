@@ -105,7 +105,8 @@ HELP_ALL = (
     "• <b>/ssilka o‘chir</b> — 🔓 Havolalarga ruxsat beradi.\n\n"
 
     "• <b>/reklama yoq</b> — ❌ Reklama va spam xabarlarni o‘chiradi.\n"
-    "• <b>/reklama o‘chir</b> — 📢 Reklama blokini o‘chiradi.\n\n"
+    "• <b>/reklama o‘chir</b> — 📢 Reklama blokini o‘chiradi.\n"
+    "• <b>/rek_limit &lt;son&gt;</b> — 🚫 Reklama limitini o‘zgartirish.\n\n"
     
     "<b>Arab harflari</b>\n"
 

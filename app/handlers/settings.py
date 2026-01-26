@@ -246,6 +246,25 @@ async def cmd_antiflood(message: Message, db: DB, config: Config):
     await _toggle(message, db, "antiflood_enabled", "Anti-flood", config)
 
 
+@router.message(Command("rek_limit"))
+async def cmd_rek_limit(message: Message, command: CommandObject, db: DB, config: Config):
+    if not await _require_bot_admin(message, db, config):
+        return
+
+    if not command.args or not command.args.strip().isdigit():
+        await message.reply("Foydalanish: /rek_limit <son>\nMasalan: /rek_limit 5")
+        return
+
+    v = int(command.args.strip())
+    if v <= 0 or v >= 200:
+        await message.reply("Noto‘g‘ri son. Limit 0..200 oralig‘ida bo‘lsin.")
+        return
+
+    await db.update_settings(message.chat.id, ads_daily_limit=v)
+    s = await db.get_or_create_settings(message.chat.id)
+    await message.reply(f"✅ Reklama limiti yangilandi: {s.ads_daily_limit}/kun")
+
+
 @router.message(Command("settime"))
 async def cmd_settime(message: Message, command: CommandObject, db: DB, config: Config):
     if not await _require_bot_admin(message, db, config):

@@ -362,6 +362,32 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                 return
 
 
+
+@router.message(
+    F.chat.type.in_({"group", "supergroup"}) &
+    (
+        F.new_chat_members |
+        F.left_chat_member |
+        F.new_chat_title |
+        F.new_chat_photo |
+        F.delete_chat_photo |
+        F.group_chat_created |
+        F.supergroup_chat_created |
+        F.message_auto_delete_timer_changed |
+        F.pinned_message |
+        F.migrate_from_chat_id |
+        F.migrate_to_chat_id
+    )
+)
+async def guard_service_messages(message: Message, db: DB, config: Config):
+    s = await db.get_or_create_settings(message.chat.id)
+    if not s.hide_service_msgs:
+        return
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
 @router.message(F.chat.type.in_({"group", "supergroup"}))
 async def guard_all(message: Message, db: DB, antiflood, config: Config):
     # фиксируем чат как активный даже без команд
