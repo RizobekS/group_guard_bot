@@ -7,13 +7,24 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import ChatPermissions, Message
 
 URL_RE = re.compile(
-    r"(?i)("
-    r"https?://[^\s]+"          # любые http/https ссылки
-    r"|www\.[^\s]+"             # www.*
-    r"|t\.me/[^\s]+"            # t.me/*
-    r"|telegram\.me/[^\s]+"     # telegram.me/*
-    r"|telegra\.ph/[^\s]+"      # telegra.ph/*
-    r"|@[\w\d_]{4,}"             # @username (как ссылка)
+    r"(?i)"
+    r"("
+    # явные URL
+    r"https?://[^\s]+"
+    r"|www\.[^\s]+"
+    # телега
+    r"|t\.me/[^\s]+"
+    r"|telegram\.me/[^\s]+"
+    r"|telegra\.ph/[^\s]+"
+    # @username (как ссылка)
+    r"|@[\w\d_]{4,}"
+    # голые домены (без http/https)
+    r"|(?<![\w@])"                         # слева не буква/цифра/подчерк/@
+    r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"  # домен + точки
+    r"(?:[a-z]{2,24})"                     # TLD
+    r"(?:/[^\s]*)?"                        # путь опционально
+    r"(?![\w-])"                           # справа не продолжение слова/дефиса
+
     r")"
 )
 
