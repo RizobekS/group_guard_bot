@@ -406,20 +406,25 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         except Exception:
             pass
 
-    join_count = len(message.new_chat_members or [])
-    if join_count <= 0:
-        return
-    inviter = message.from_user
-    new_ids = {m.id for m in (message.new_chat_members or [])}
-    if inviter and inviter.id in new_ids:
-        # человек сам вошёл, не считаем как "добавил людей"
-        inviter = None
-
+    # 2) FORCE-ADD прогресс: считаем ВСЕГДА, если это РУЧНОЕ добавление
+    # Telegram: при join по ссылке from_user обычно == сам вошедший -> это НЕ "я добавил людей"
     if s.force_add_enabled and message.from_user:
         inviter = message.from_user
-        await db.inc_force_progress(message.chat.id, inviter.id, join_count)
+        new_members = list(message.new_chat_members or [])
 
-    # 2) anti-raid
+        # убираем бота и самого inviter (на случай странных кейсов)
+        new_members = [m for m in new_members if not getattr(m, "is_bot", False) and m.id != inviter.id]
+
+        # если inviter добавил кого-то вручную, то inviter != added_user (обычно так и бывает)
+        # если люди зашли сами по ссылке, inviter == joiner -> new_members после фильтра станет пустым
+        if new_members:
+            try:
+                await db.inc_force_progress(message.chat.id, inviter.id, len(new_members))
+            except Exception as e:
+                print(f"[force_add] cannot inc progress chat={message.chat.id} inviter={inviter.id}: {e}")
+
+    # 3) ANTI-RAID (считает любых входящих, и ручных и по ссылке, потому что это "навалились люди")
+    join_count = len(message.new_chat_members or [])
     window_hours = int(s.raid_window_min)
     close_hours = int(s.raid_close_min)
     window_sec = window_hours * 3600
@@ -446,7 +451,7 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
     except Exception:
         return
 
-    # Через N секунд открываем обратно
+    # Через N часов открываем обратно
     async def _reopen():
         await asyncio.sleep(close_sec)
         try:
