@@ -6,7 +6,16 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import ChatPermissions, Message
 
-URL_RE = re.compile(r"(https?://|www\.|t\.me/|@[\w\d_]{4,})", re.IGNORECASE)
+URL_RE = re.compile(
+    r"(?i)("
+    r"https?://[^\s]+"          # любые http/https ссылки
+    r"|www\.[^\s]+"             # www.*
+    r"|t\.me/[^\s]+"            # t.me/*
+    r"|telegram\.me/[^\s]+"     # telegram.me/*
+    r"|telegra\.ph/[^\s]+"      # telegra.ph/*
+    r"|@[\w\d_]{4,}"             # @username (как ссылка)
+    r")"
+)
 
 # арабский Unicode диапазон (базово)
 ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")

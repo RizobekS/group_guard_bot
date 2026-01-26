@@ -2,7 +2,7 @@
 import re
 
 from aiogram import Router, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from ..db import DB
@@ -34,7 +34,7 @@ def settings_text(s) -> str:
         f"• Kanal post blok: {_on(s.block_channel_posts)}\n"
         f"• Xizmat xabar yashirish: {_on(s.hide_service_msgs)}\n"
         f"• Anti-flood: {_on(s.antiflood_enabled)} (max {s.flood_max_msgs}/{s.flood_window_sec}s)\n"
-        f"• Anti-raid: limit {s.raid_limit} / oyna {s.raid_window_min}m / yopish {s.raid_close_min}m\n"
+        f"• Anti-raid: limit {s.raid_limit} / oyna {s.raid_window_min}soat / yopish {s.raid_close_min}soat\n"
         f"• Force add: {_on(s.force_add_enabled)} (talab {s.force_add_required})\n"
         f"• Force kanal: {'@'+s.linked_channel if s.linked_channel else 'OFF'}\n"
         f"• Anti-same: {_on(s.antisame_enabled)} ({s.antisame_minutes} min)\n"
@@ -159,8 +159,8 @@ HELP_ALL = (
 
     "🧯 <b>ANTI-RAID (OMMAVIY KIRISH)</b>\n"
     "• <b>/limit &lt;son&gt;</b> — 🚪 Nechta odam kirsa xavf deb hisoblansin.\n"
-    "• <b>/oyna &lt;min&gt;</b> — ⏱ Qaysi vaqt ichida sanaydi.\n"
-    "• <b>/yopish &lt;min&gt;</b> — 🔒 Guruhni vaqtincha yopadi.\n"
+    "• <b>/oyna &lt;soat&gt;</b> — ⏱ Qaysi vaqt ichida sanaydi.\n"
+    "• <b>/yopish &lt;soat&gt;</b> — 🔒 Guruhni vaqtincha yopadi.\n"
     "• <b>/antiraidpanel</b> — 🎛 Tugmali boshqaruv paneli.\n\n"
     
     "<b>📌 Misol sozlama:</b>\n"
@@ -200,7 +200,35 @@ HELP_ALL = (
 
 
 @router.message(Command("start", "holat"))
-async def cmd_start(message: Message, db: DB, config: Config):
+async def cmd_start(message: Message, command: CommandObject, db: DB, config: Config):
+    await db.touch_chat(message.chat.id, message.chat.title or "")
+
+    args = (command.args or "").strip()
+    if args.startswith("force_"):
+        if message.chat.type != "private":
+            return
+
+        try:
+            chat_id = int(args.split("_", 1)[1])
+        except Exception:
+            await message.answer("Noto‘g‘ri so‘rov.")
+            return
+
+        s = await db.get_or_create_settings(chat_id)
+        required = int(s.force_add_required or 0)
+        added = await db.get_force_progress(chat_id, message.from_user.id)
+        need = max(0, required - added)
+
+        await message.answer(
+            "📌 <b>Guruh bo‘yicha hisobingiz</b>\n\n"
+            f"✅ Qo‘shganingiz: <b>{added}</b> ta\n"
+            f"🎯 Talab: <b>{required}</b> ta\n"
+            f"⏳ Qoldi: <b>{need}</b> ta\n\n"
+            "Guruhga odam qo‘shib bo‘lgach, qayta yozib ko‘ring.",
+            parse_mode="HTML"
+        )
+        return
+
     me = await message.bot.get_me()
     if message.chat.type == "private":
         text = (

@@ -3,9 +3,13 @@ import asyncio
 import re
 from datetime import datetime, date
 from aiogram import Router, F
+from aiogram.utils.markdown import hbold
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
-from aiogram.types import Message, ChatPermissions
+from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.text_decorations import html_decoration as hd
 from ..db import DB
+from ..config import Config
+from ..utils.access import can_manage_chat
 from ..utils.access import can_manage_bot
 from ..utils.moderation import has_link, has_arabic, looks_like_ads, is_channel_post, text_hash, mute_user
 from ..utils.antiraid import AntiRaid
@@ -71,9 +75,17 @@ async def _send_temp(message: Message, text: str, seconds: int = 10):
             pass
     asyncio.create_task(_del())
 
+def _append_force_text(s, txt: str) -> str:
+    extra = (getattr(s, "force_text", "") or "").strip()
+    if not extra:
+        return txt
+    # красивый quote, как вы уже делали
+    return txt + "\n\n" + hd.quote(extra)
+
 async def _handle_violation(
     message: Message,
     db: DB,
+    config: Config,
     rule: str,
     warn_text: str,
     mute_text: str,
@@ -86,21 +98,17 @@ async def _handle_violation(
     if not user:
         return
 
-    # не трогаем владельца/бот-админов
-    is_manager = await can_manage_bot(user.id, user.username, db)
+    s = await db.get_or_create_settings(chat_id)
 
-    # удаляем нарушающее сообщение в любом случае
-    try:
-        await message.delete()
-    except Exception:
-        pass
-
-    m = _mention(user)
-
-    # владельца/бот-админов не наказываем, но предупреждаем
-    if is_manager:
-        await _send_temp(message, f"{m} {warn_text}", seconds=bot_msg_delete_sec)
-        return
+    # менеджер = владелец бота / global bot-admin / creator / chat bot-admin
+    is_manager = await can_manage_chat(
+        message.bot,
+        chat_id,
+        user.id,
+        user.username,
+        db,
+        config
+    )
 
     # удаляем нарушающее сообщение
     try:
@@ -108,27 +116,37 @@ async def _handle_violation(
     except Exception:
         pass
 
-    count = await db.hit_strike(chat_id, user.id, rule=rule, window_sec=strike_window_sec)
-
     m = _mention(user)
 
-    if count == 1:
-        await _send_temp(message, f"{m} {warn_text}", seconds=bot_msg_delete_sec)
+    # текст предупреждения + textforce (если задан)
+    warn_full = _append_force_text(s, f"{m} {warn_text}")
+    mute_full = _append_force_text(s, f"{m} {mute_text} ({mute_minutes} daqiqa)")
+
+    # менеджеров не наказываем, только предупреждаем
+    if is_manager:
+        await _send_temp(message, warn_full, seconds=bot_msg_delete_sec)
         return
 
-    # 2+ раз: mute
-    muted = await mute_user(message.bot, chat_id, user.id, minutes=mute_minutes)
-    # muted может быть False (например, Telegram не дал ограничить). Тогда просто уведомим.
-    if muted:
-        await _send_temp(message, f"{m} {mute_text} ({mute_minutes} daqiqa)", seconds=bot_msg_delete_sec)
-    else:
-        await _send_temp(message, f"{m} {mute_text} (lekin cheklashga ruxsat yo‘q)", seconds=bot_msg_delete_sec)
+    count = await db.hit_strike(chat_id, user.id, rule=rule, window_sec=strike_window_sec)
 
-    # после наказания сбрасываем, чтобы снова был "1 шанс"
+    if count == 1:
+        await _send_temp(message, warn_full, seconds=bot_msg_delete_sec)
+        return
+
+    muted = await mute_user(message.bot, chat_id, user.id, minutes=mute_minutes)
+    if muted:
+        await _send_temp(message, mute_full, seconds=bot_msg_delete_sec)
+    else:
+        await _send_temp(
+            message,
+            _append_force_text(s, f"{m} {mute_text} (lekin cheklashga ruxsat yo‘q)"),
+            seconds=bot_msg_delete_sec
+        )
+
     await db.reset_strike(chat_id, user.id, rule=rule)
 
 
-async def _process(message: Message, db: DB, antiflood):
+async def _process(message: Message, db: DB, antiflood, config: Config):
     chat_id = message.chat.id
     user = message.from_user
     if not user:
@@ -152,7 +170,7 @@ async def _process(message: Message, db: DB, antiflood):
             except Exception:
                 pass
             await _handle_violation(
-                message, db,
+                message, db, config,
                 rule="antiflood",
                 warn_text="Belgilangan vaqt ichida keragidan ortiq habar yubormang aks xolda bloklanasiz.",
                 mute_text="Belgilangan vaqt ichida keragidan ortiq habar yuborganingiz uchun 2 daqiqaga bloklandingiz.",
@@ -161,57 +179,95 @@ async def _process(message: Message, db: DB, antiflood):
             # если muted=False (например owner) просто продолжаем удалять спам-сообщения
             return
 
-        # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-        if s.linked_channel:
-            res = await _is_subscribed(message.bot, s.linked_channel, user.id)
-            if res is False:
-                # удаляем сообщение и даем инструкцию (тихо и без спама)
+    # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
+    if s.linked_channel:
+        res = await _is_subscribed(message.bot, s.linked_channel, user.id)
+        if res is False:
+            # удаляем сообщение и даем инструкцию (тихо и без спама)
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            m = _mention(user)
+            txt = f"🔒 {m} guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
+            txt = _append_force_text(s, txt)
+
+            warn = await message.answer(
+                txt,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+
+            async def _delete_later(chat_id: int, msg_id: int):
+                await asyncio.sleep(10)
+                try:
+                    await message.bot.delete_message(chat_id, msg_id)
+                except Exception:
+                    pass
+
+            asyncio.create_task(_delete_later(warn.chat.id, warn.message_id))
+            return
+            # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
+
+    # Force add
+    if s.force_add_enabled:
+        if not await db.is_force_priv(chat_id, user.id):
+            added = await db.get_force_progress(chat_id, user.id)
+            required = int(s.force_add_required)
+            if added < required:
                 try:
                     await message.delete()
                 except Exception:
                     pass
-                # можно ответить и удалить ответ позже, но пока просто reply
-                warn = await message.answer(
-                    f"🔒 Guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
+
+                need = max(0, required - added)
+                m = _mention(user)  # sizda allaqachon bor: username bo'lsa @, bo'lmasa tg://user
+
+                bot_username = (await message.bot.get_me()).username
+                deep_link = f"https://t.me/{bot_username}?start=force_{chat_id}"
+
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="👥 Odam qo‘shdim", url=deep_link)]
+                ])
+
+                txt = (
+                    f"Kechirasiz! {m} guruhda yozish uchun avval "
+                    f"<b>{required}</b> ta odam qo‘shishingiz zarur!\n\n"
+                    f"📊 Siz qo‘shganlar: <b>{added}</b> ta\n"
+                    f"⏳ Yana kerak: <b>{need}</b> ta\n\n"
                 )
 
-                async def _delete_later(chat_id: int, msg_id: int):
-                    await asyncio.sleep(10)
+                # Agar admin /textforce bilan custom matn bergan bo'lsa, pastiga qo'shib yuboramiz
+                if s.force_text:
+                    txt += hd.quote(s.force_text.strip())
+
+                warn = await message.answer(
+                    txt,
+                    parse_mode="HTML",
+                    reply_markup=kb,
+                    disable_web_page_preview=True
+                )
+
+                # delete warning after N sec (sizda force_text_delete_sec bor)
+                try:
+                    sec = int(s.force_text_delete_sec or 10)
+                except Exception:
+                    sec = 10
+
+                async def _delete_later():
+                    await asyncio.sleep(sec)
                     try:
-                        await message.bot.delete_message(chat_id, msg_id)
+                        await message.bot.delete_message(warn.chat.id, warn.message_id)
                     except Exception:
                         pass
 
-                asyncio.create_task(_delete_later(warn.chat.id, warn.message_id))
+                asyncio.create_task(_delete_later())
                 return
-                # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
-
-        # Force add
-        if s.force_add_enabled:
-            if not await db.is_force_priv(chat_id, user.id):
-                added = await db.get_force_progress(chat_id, user.id)
-                if added < s.force_add_required:
-                    await message.delete()
-
-                    warn = await message.answer(
-                        s.force_text or
-                        f"👥 Yozish uchun kamida {s.force_add_required} odam qo‘shing."
-                    )
-
-                    async def _del():
-                        await asyncio.sleep(s.force_text_delete_sec or 10)
-                        try:
-                            await message.bot.delete_message(warn.chat.id, warn.message_id)
-                        except:
-                            pass
-
-                    asyncio.create_task(_del())
-                    return
 
     # 1) Канал-посты
     if s.block_channel_posts and is_channel_post(message):
         await _handle_violation(
-            message, db,
+            message, db, config,
             rule="channel",
             warn_text="kanal nomidan post yubormang. Yana takrorlansa blok bo‘ladi.",
             mute_text="kanal post yuborganingiz uchun bloklandingiz.",
@@ -227,7 +283,7 @@ async def _process(message: Message, db: DB, antiflood):
         delta = datetime.utcnow() - log.last_at
         if log.last_hash == h and delta.total_seconds() <= minutes * 60:
             await _handle_violation(
-                message, db,
+                message, db, config,
                 rule="antisame",
                 warn_text="bir xil xabarni qayta yubormang. Yana takrorlansa blok bo‘ladi.",
                 mute_text="bir xil xabarni qayta yuborganingiz uchun bloklandingiz.",
@@ -239,7 +295,7 @@ async def _process(message: Message, db: DB, antiflood):
     # 3) Ссылки
     if s.block_links and has_link(text):
         await _handle_violation(
-            message, db,
+            message, db, config,
             rule="links",
             warn_text="havola yubormang. Yana yuborsangiz bloklanasiz.",
             mute_text="siz havola yuborganingiz uchun bloklandingiz.",
@@ -250,7 +306,7 @@ async def _process(message: Message, db: DB, antiflood):
     # 4) Arab
     if s.block_arab and has_arabic(text):
         await _handle_violation(
-            message, db,
+            message, db, config,
             rule="arab",
             warn_text="arabcha matn yubormang. Yana takrorlansa blok bo‘ladi.",
             mute_text="arabcha matn yuborganingiz uchun bloklandingiz.",
@@ -291,7 +347,7 @@ async def _process(message: Message, db: DB, antiflood):
         for w in bad_words:
             if f" {w} " in norm:
                 await _handle_violation(
-                    message, db,
+                    message, db, config,
                     rule="swear",
                     warn_text="so‘kinish mumkin emas. Yana takrorlansa blok bo‘ladi.",
                     mute_text="so‘kinganingiz uchun bloklandingiz.",
@@ -301,13 +357,14 @@ async def _process(message: Message, db: DB, antiflood):
 
 
 @router.message(F.chat.type.in_({"group", "supergroup"}))
-async def guard_all(message: Message, db: DB, antiflood):
+async def guard_all(message: Message, db: DB, antiflood, config: Config):
     # фиксируем чат как активный даже без команд
     await db.touch_chat(message.chat.id, message.chat.title or "")
-    await _process(message, db, antiflood)
+    await _process(message, db, antiflood, config)
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), F.new_chat_members)
-async def guard_join(message: Message, db: DB, antiraid):
+async def guard_join(message: Message, db: DB, antiraid, config: Config):
+    await db.touch_chat(message.chat.id, message.chat.title or "")
     s = await db.get_or_create_settings(message.chat.id)
 
     # 1) hide service msg
@@ -319,8 +376,10 @@ async def guard_join(message: Message, db: DB, antiraid):
 
     # 2) anti-raid
     join_count = len(message.new_chat_members or [])
-    window_sec = int(s.raid_window_min) * 60
-    close_sec = int(s.raid_close_min) * 60
+    window_hours = int(s.raid_window_min)
+    close_hours = int(s.raid_close_min)
+    window_sec = window_hours * 3600
+    close_sec = close_hours * 3600
 
     triggered = antiraid.hit(
         chat_id=message.chat.id,
@@ -337,7 +396,8 @@ async def guard_join(message: Message, db: DB, antiraid):
         antiraid.set_locked(message.chat.id, close_sec)
         await message.answer(
             f"🚨 Anti-raid: chat yopildi.\n"
-            f"Limit: {s.raid_limit} / oyna: {s.raid_window_min}m / yopish: {s.raid_close_min}m"
+            f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat",
+            disable_web_page_preview=True
         )
     except Exception:
         return
@@ -362,7 +422,7 @@ async def guard_join(message: Message, db: DB, antiraid):
     asyncio.create_task(_reopen())
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), F.left_chat_member)
-async def guard_leave(message: Message, db: DB):
+async def guard_leave(message: Message, db: DB, config: Config):
     s = await db.get_or_create_settings(message.chat.id)
     if s.hide_service_msgs:
         try:
