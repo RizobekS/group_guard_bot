@@ -366,8 +366,6 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 @router.message(
     F.chat.type.in_({"group", "supergroup"}) &
     (
-        F.new_chat_members |
-        F.left_chat_member |
         F.new_chat_title |
         F.new_chat_photo |
         F.delete_chat_photo |
