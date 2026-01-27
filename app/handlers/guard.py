@@ -397,6 +397,14 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
     await db.touch_chat(message.chat.id, message.chat.title or "")
     s = await db.get_or_create_settings(message.chat.id)
 
+    print(
+        "[guard_join]",
+        "chat=", message.chat.id,
+        "from=", getattr(message.from_user, "id", None),
+        "new=", [m.id for m in (message.new_chat_members or [])],
+        "force_enabled=", (await db.get_or_create_settings(message.chat.id)).force_add_enabled
+    )
+
     # 1) hide service msg
     if s.hide_service_msgs:
         try:
