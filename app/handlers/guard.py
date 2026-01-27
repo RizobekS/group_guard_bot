@@ -209,7 +209,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
     # Force add
-    if s.force_add_enabled and not tg_admin:
+    if s.force_add_enabled:
         if not await db.is_force_priv(chat_id, user.id):
             added = await db.get_force_progress(chat_id, user.id)
             required = int(s.force_add_required)
@@ -220,7 +220,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                     pass
 
                 need = max(0, required - added)
-                m = _mention(user)  # sizda allaqachon bor: username bo'lsa @, bo'lmasa tg://user
+                m = _mention(user)
 
                 bot_username = (await message.bot.get_me()).username
                 deep_link = f"https://t.me/{bot_username}?start=force_{chat_id}"
@@ -386,24 +386,11 @@ async def guard_service_messages(message: Message, db: DB, config: Config):
     except Exception:
         pass
 
-@router.message(F.chat.type.in_({"group", "supergroup"}))
-async def guard_all(message: Message, db: DB, antiflood, config: Config):
-    # фиксируем чат как активный даже без команд
-    await db.touch_chat(message.chat.id, message.chat.title or "")
-    await _process(message, db, antiflood, config)
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), F.new_chat_members)
 async def guard_join(message: Message, db: DB, antiraid, config: Config):
     await db.touch_chat(message.chat.id, message.chat.title or "")
     s = await db.get_or_create_settings(message.chat.id)
-
-    print(
-        "[guard_join]",
-        "chat=", message.chat.id,
-        "from=", getattr(message.from_user, "id", None),
-        "new=", [m.id for m in (message.new_chat_members or [])],
-        "force_enabled=", (await db.get_or_create_settings(message.chat.id)).force_add_enabled
-    )
 
     # 1) hide service msg
     if s.hide_service_msgs:
@@ -476,3 +463,12 @@ async def guard_leave(message: Message, db: DB, config: Config):
             await message.delete()
         except Exception:
             pass
+
+
+@router.message(F.chat.type.in_({"group", "supergroup"}))
+async def guard_all(message: Message, db: DB, antiflood, config: Config):
+    if message.new_chat_members or message.left_chat_member:
+        return
+    # фиксируем чат как активный даже без команд
+    await db.touch_chat(message.chat.id, message.chat.title or "")
+    await _process(message, db, antiflood, config)
