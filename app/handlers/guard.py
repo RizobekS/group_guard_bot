@@ -209,7 +209,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
     # Force add
-    if s.force_add_enabled:
+    if s.force_add_enabled and not tg_admin:
         if not await db.is_force_priv(chat_id, user.id):
             added = await db.get_force_progress(chat_id, user.id)
             required = int(s.force_add_required)
