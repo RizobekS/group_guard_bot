@@ -21,6 +21,7 @@ ALLOW_ALL = ChatPermissions(
     can_send_polls=True,
     can_send_other_messages=True,
     can_add_web_page_previews=True,
+    can_invite_users=True,
 )
 
 CHANNEL_RE = re.compile(r"^@?[A-Za-z0-9_]{5,}$")

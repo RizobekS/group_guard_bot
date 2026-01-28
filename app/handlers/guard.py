@@ -23,6 +23,7 @@ ALLOW_ALL = ChatPermissions(
     can_send_polls=True,
     can_send_other_messages=True,
     can_add_web_page_previews=True,
+    can_invite_users=True,
 )
 
 DENY_ALL = ChatPermissions(
@@ -31,6 +32,7 @@ DENY_ALL = ChatPermissions(
     can_send_polls=False,
     can_send_other_messages=False,
     can_add_web_page_previews=False,
+    can_invite_users=False,
 )
 
 async def _is_subscribed(bot, channel_username: str, user_id: int) -> bool | None:
