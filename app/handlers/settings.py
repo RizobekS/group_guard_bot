@@ -87,11 +87,11 @@ async def cmd_oyna(message: Message, db: DB, config: Config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.reply("Foydalanish: /oyna <min>  (masalan: /oyna 1)")
+        await message.reply("Foydalanish: /oyna <soat>  (masalan: /oyna 1)")
         return
     v = _parse_int(parts[1], 1, 60)
     if v is None:
-        await message.reply("Noto‘g‘ri son. Oyna 1..60 daqiqa.")
+        await message.reply("Noto‘g‘ri son. Oyna 1..60 soat.")
         return
     await db.update_settings(message.chat.id, raid_window_min=v)
     s = await db.get_or_create_settings(message.chat.id)
@@ -103,11 +103,11 @@ async def cmd_yopish(message: Message, db: DB, config: Config):
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.reply("Foydalanish: /yopish <min>  (masalan: /yopish 10)")
+        await message.reply("Foydalanish: /yopish <soat>  (masalan: /yopish 10)")
         return
     v = _parse_int(parts[1], 1, 180)
     if v is None:
-        await message.reply("Noto‘g‘ri son. Yopish 1..180 daqiqa.")
+        await message.reply("Noto‘g‘ri son. Yopish 1..180 soat.")
         return
     await db.update_settings(message.chat.id, raid_close_min=v)
     s = await db.get_or_create_settings(message.chat.id)
