@@ -25,6 +25,11 @@ def _on(flag: bool) -> str:
     return "ON" if flag else "OFF"
 
 def settings_text(s) -> str:
+    anti_raid_line = (
+        "• Anti-raid: OFF\n"
+        if int(s.raid_limit) <= 0
+        else f"• Anti-raid: limit {s.raid_limit} / oyna {s.raid_window_min}soat / yopish {s.raid_close_min}soat\n"
+    )
     return (
         "🛡 Guruh Himoya Boti — sozlamalar:\n"
         f"• Ssilka blok: {_on(s.block_links)}\n"
@@ -34,7 +39,7 @@ def settings_text(s) -> str:
         f"• Kanal post blok: {_on(s.block_channel_posts)}\n"
         f"• Xizmat xabar yashirish: {_on(s.hide_service_msgs)}\n"
         f"• Anti-flood: {_on(s.antiflood_enabled)} (max {s.flood_max_msgs}/{s.flood_window_sec}s)\n"
-        f"• Anti-raid: limit {s.raid_limit} / oyna {s.raid_window_min}soat / yopish {s.raid_close_min}soat\n"
+        f"{anti_raid_line}"
         f"• Force add: {_on(s.force_add_enabled)} (talab {s.force_add_required})\n"
         f"• Force kanal: {'@'+s.linked_channel if s.linked_channel else 'OFF'}\n"
         f"• Anti-same: {_on(s.antisame_enabled)} ({s.antisame_minutes} min)\n"
@@ -162,6 +167,7 @@ HELP_ALL = (
     "• <b>/limit &lt;son&gt;</b> — 🚪 Nechta odam kirsa xavf deb hisoblansin.\n"
     "• <b>/oyna &lt;soat&gt;</b> — ⏱ Qaysi vaqt ichida sanaydi.\n"
     "• <b>/yopish &lt;soat&gt;</b> — 🔒 Guruhni vaqtincha yopadi.\n"
+    "• <b>/limit 0</b> bo'lganda — ANTI-RAID off.\n"
     "• <b>/antiraidpanel</b> — 🎛 Tugmali boshqaruv paneli.\n\n"
     
     "<b>📌 Misol sozlama:</b>\n"

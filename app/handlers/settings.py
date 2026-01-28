@@ -3,6 +3,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import Command, CommandObject
+from aiogram.types import ChatPermissions
 
 from ..config import Config
 from ..db import DB
@@ -10,8 +11,17 @@ from .base import settings_text
 from ..utils.admin import is_admin
 from ..utils.access import is_owner, can_manage_bot, can_manage_chat
 from ..utils.moderation import unmute_user
+from ..utils.antiraid import AntiRaid
 
 router = Router()
+
+ALLOW_ALL = ChatPermissions(
+    can_send_messages=True,
+    can_send_media_messages=True,
+    can_send_polls=True,
+    can_send_other_messages=True,
+    can_add_web_page_previews=True,
+)
 
 CHANNEL_RE = re.compile(r"^@?[A-Za-z0-9_]{5,}$")
 
@@ -58,13 +68,18 @@ async def cmd_limit(message: Message, db: DB, config: Config):
     if len(parts) < 2:
         await message.reply("Foydalanish: /limit <son>  (masalan: /limit 200)")
         return
-    v = _parse_int(parts[1], 5, 5000)
+    v = _parse_int(parts[1], 0, 5000)
     if v is None:
-        await message.reply("Noto‘g‘ri son. Limit 5..5000 oralig‘ida bo‘lsin.")
+        await message.reply("Noto‘g‘ri son. Limit 0..5000 oralig‘ida bo‘lsin.")
         return
+
     await db.update_settings(message.chat.id, raid_limit=v)
     s = await db.get_or_create_settings(message.chat.id)
-    await message.reply("✅ Anti-raid limit yangilandi.\n\n" + settings_text(s))
+
+    if v == 0:
+        await message.reply("✅ Anti-raid: OFF\n\n" + settings_text(s))
+    else:
+        await message.reply("✅ Anti-raid limit yangilandi.\n\n" + settings_text(s))
 
 @router.message(F.text.startswith("/oyna"))
 async def cmd_oyna(message: Message, db: DB, config: Config):
@@ -108,8 +123,9 @@ def _panel_kb(s) -> InlineKeyboardBuilder:
     kb.button(text="➕ Oyna", callback_data="ar:win:+1")
     kb.button(text="➖ Yopish", callback_data="ar:close:-1")
     kb.button(text="➕ Yopish", callback_data="ar:close:+1")
+    kb.button(text="⛔ OFF", callback_data="ar:limit:set0")
 
-    kb.adjust(2, 2, 2)
+    kb.adjust(2, 2, 2, 1)
     return kb
 
 @router.message(F.text == "/antiraidpanel")
@@ -122,7 +138,7 @@ async def cmd_antiraidpanel(message: Message, db: DB, config: Config):
 
 
 @router.callback_query(F.data.startswith("ar:"))
-async def cb_antiraidpanel(query: CallbackQuery, db: DB, config: Config):
+async def cb_antiraidpanel(query: CallbackQuery, db: DB, config: Config, antiraid: AntiRaid):
     if not query.message:
         return
 
@@ -138,22 +154,62 @@ async def cb_antiraidpanel(query: CallbackQuery, db: DB, config: Config):
         await query.answer("Ruxsat yo‘q.", show_alert=True)
         return
 
-    s = await db.get_or_create_settings(query.message.chat.id)
-    _, key, delta = query.data.split(":")
-    d = int(delta)
+    chat_id = query.message.chat.id
+    s = await db.get_or_create_settings(chat_id)
+
+    # ожидаем формат: ar:<key>:<delta>
+    try:
+        _, key, delta = query.data.split(":")
+    except Exception:
+        await query.answer("Noto‘g‘ri tugma.", show_alert=True)
+        return
+
+    # ✅ OFF кнопка
+    if key == "limit" and delta == "set0":
+        await db.update_settings(chat_id, raid_limit=0)
+
+        # чистим in-memory lock/joins, чтобы антираид реально "выключился"
+        try:
+            antiraid.clear(chat_id)
+        except Exception:
+            pass
+
+        # если чат был закрыт антираидом — откроем обратно (best-effort)
+        try:
+            await query.bot.set_chat_permissions(chat_id, ALLOW_ALL)
+        except Exception:
+            pass
+
+        s = await db.get_or_create_settings(chat_id)
+        await query.message.edit_text(
+            "🛡 Anti-raid panel:\n\n" + settings_text(s),
+            reply_markup=_panel_kb(s).as_markup()
+        )
+        await query.answer("✅ Anti-raid: OFF")
+        return
+
+    # остальные кнопки как раньше
+    try:
+        d = int(delta)
+    except Exception:
+        await query.answer("Noto‘g‘ri qiymat.", show_alert=True)
+        return
 
     if key == "limit":
-        new_v = max(5, min(5000, s.raid_limit + d))
-        await db.update_settings(query.message.chat.id, raid_limit=new_v)
+        new_v = max(0, min(5000, s.raid_limit + d))
+        await db.update_settings(chat_id, raid_limit=new_v)
     elif key == "win":
         new_v = max(1, min(60, s.raid_window_min + d))
-        await db.update_settings(query.message.chat.id, raid_window_min=new_v)
+        await db.update_settings(chat_id, raid_window_min=new_v)
     elif key == "close":
         new_v = max(1, min(180, s.raid_close_min + d))
-        await db.update_settings(query.message.chat.id, raid_close_min=new_v)
+        await db.update_settings(chat_id, raid_close_min=new_v)
 
-    s = await db.get_or_create_settings(query.message.chat.id)
-    await query.message.edit_text("🛡 Anti-raid panel:\n\n" + settings_text(s), reply_markup=_panel_kb(s).as_markup())
+    s = await db.get_or_create_settings(chat_id)
+    await query.message.edit_text(
+        "🛡 Anti-raid panel:\n\n" + settings_text(s),
+        reply_markup=_panel_kb(s).as_markup()
+    )
     await query.answer("✅ Yangilandi")
 
 @router.message(F.text.startswith("/botadmin_add"))
