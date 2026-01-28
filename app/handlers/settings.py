@@ -61,25 +61,40 @@ async def cmd_unlink_channel(message: Message, db: DB, config: Config):
     await message.reply("✅ Force kanal o‘chirildi.")
 
 @router.message(F.text.startswith("/limit"))
-async def cmd_limit(message: Message, db: DB, config: Config):
+async def cmd_limit(message: Message, db: DB, config: Config, antiraid: AntiRaid):
     if not await can_manage_bot(message, db, config):
         return
+
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         await message.reply("Foydalanish: /limit <son>  (masalan: /limit 200)")
         return
+
     v = _parse_int(parts[1], 0, 5000)
     if v is None:
         await message.reply("Noto‘g‘ri son. Limit 0..5000 oralig‘ida bo‘lsin.")
         return
 
     await db.update_settings(message.chat.id, raid_limit=v)
-    s = await db.get_or_create_settings(message.chat.id)
 
     if v == 0:
+        try:
+            antiraid.clear(message.chat.id)
+        except Exception:
+            pass
+
+        try:
+            await message.bot.set_chat_permissions(message.chat.id, ALLOW_ALL)
+        except Exception:
+            # botda ruxsat bo'lmasa ham limit 0 saqlanadi
+            pass
+
+        s = await db.get_or_create_settings(message.chat.id)
         await message.reply("✅ Anti-raid: OFF\n\n" + settings_text(s))
-    else:
-        await message.reply("✅ Anti-raid limit yangilandi.\n\n" + settings_text(s))
+        return
+
+    s = await db.get_or_create_settings(message.chat.id)
+    await message.reply("✅ Anti-raid limit yangilandi.\n\n" + settings_text(s))
 
 @router.message(F.text.startswith("/oyna"))
 async def cmd_oyna(message: Message, db: DB, config: Config):
