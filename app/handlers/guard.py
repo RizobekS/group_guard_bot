@@ -69,7 +69,7 @@ def _mention(user) -> str:
     return f'<a href="tg://user?id={user.id}">{full}</a>'
 
 async def _send_temp(message: Message, text: str, seconds: int = 10):
-    warn = await message.answer(text, parse_mode="HTML", disable_web_page_preview=True)
+    warn = await message.answer(text, parse_mode="HTML")
     async def _del():
         await asyncio.sleep(seconds)
         try:
@@ -94,7 +94,7 @@ async def _handle_violation(
     mute_text: str,
     mute_minutes: int,
     strike_window_sec: int = 3600,
-    bot_msg_delete_sec: int = 10,
+    bot_msg_delete_sec: int = 60,
 ):
     chat_id = message.chat.id
     user = message.from_user
