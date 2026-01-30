@@ -435,6 +435,7 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         if new_members:
             try:
                 await db.inc_force_progress(message.chat.id, inviter.id, len(new_members))
+                print(f"[force_add] chat={message.chat.id} inviter={inviter.id} +{len(new_members)}")
             except Exception as e:
                 print(f"[force_add] cannot inc progress chat={message.chat.id} inviter={inviter.id}: {e}")
 

@@ -414,7 +414,7 @@ class DB:
                     last_at=now,
                 )
                 .on_conflict_do_update(
-                    constraint="uq_user_strike",
+                    index_elements=["chat_id", "user_id", "rule"],
                     set_={
                         "count": case(
                             (UserStrike.last_at < cutoff, 1),
