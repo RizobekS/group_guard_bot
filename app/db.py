@@ -323,16 +323,15 @@ class DB:
 
     async def inc_force_progress(self, chat_id: int, user_id: int, inc: int):
         async with self.Session() as s:
-            q = select(ForceAddProgress).where(
-                ForceAddProgress.chat_id == chat_id,
-                ForceAddProgress.user_id == user_id
+            stmt = (
+                insert(ForceAddProgress)
+                .values(chat_id=chat_id, user_id=user_id, added_count=inc)
+                .on_conflict_do_update(
+                    index_elements=["chat_id", "user_id"],
+                    set_={"added_count": ForceAddProgress.added_count + inc},
+                )
             )
-            r = await s.execute(q)
-            obj = r.scalar_one_or_none()
-            if not obj:
-                obj = ForceAddProgress(chat_id=chat_id, user_id=user_id, added_count=0)
-                s.add(obj)
-            obj.added_count += inc
+            await s.execute(stmt)
             await s.commit()
 
     async def reset_force_user(self, chat_id: int, user_id: int):
@@ -405,28 +404,30 @@ class DB:
         cutoff = now - timedelta(seconds=window_sec)
 
         async with self.Session() as session:
-            stmt = insert(UserStrike).values(
-                chat_id=chat_id,
-                user_id=user_id,
-                rule=rule,
-                count=1,
-                last_at=now,
-            ).on_conflict_do_update(
-                index_elements=["chat_id", "user_id", "rule"],  # соответствует uq_user_strike
-                set_={
-                    # если страйк старый -> начинаем заново с 1
-                    "count": case(
-                        (UserStrike.last_at < cutoff, 1),
-                        else_=(UserStrike.count + 1),
-                    ),
-                    "last_at": now,
-                }
+            stmt = (
+                insert(UserStrike)
+                .values(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    rule=rule,
+                    count=1,
+                    last_at=now,
+                )
+                .on_conflict_do_update(
+                    constraint="uq_user_strike",
+                    set_={
+                        "count": case(
+                            (UserStrike.last_at < cutoff, 1),
+                            else_=(UserStrike.count + 1),
+                        ),
+                        "last_at": now,
+                    },
+                )
             )
 
             await session.execute(stmt)
             await session.commit()
 
-            # вернуть актуальный count
             res = await session.execute(
                 select(UserStrike.count).where(
                     UserStrike.chat_id == chat_id,
