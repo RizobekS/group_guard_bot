@@ -1,7 +1,9 @@
 import json
 from datetime import date, datetime, timedelta
+
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, case
 from .models import (
     Base,
     ChatSettings,
@@ -398,41 +400,41 @@ class DB:
             await s.execute(delete(ForceAddPriv).where(ForceAddPriv.chat_id == chat_id))
             await s.commit()
 
-    async def hit_strike(
-            self,
-            chat_id: int,
-            user_id: int,
-            rule: str,
-            window_sec: int,
-    ) -> int:
-        """
-        Увеличивает страйк и возвращает текущее значение count.
-        Если последний страйк был давно (старше window_sec) — сбрасываем до 0 и считаем заново.
-        """
+    async def hit_strike(self, chat_id: int, user_id: int, rule: str, window_sec: int) -> int:
         now = datetime.utcnow()
+        cutoff = now - timedelta(seconds=window_sec)
+
         async with self.Session() as session:
-            q = select(UserStrike).where(
-                UserStrike.chat_id == chat_id,
-                UserStrike.user_id == user_id,
-                UserStrike.rule == rule,
+            stmt = insert(UserStrike).values(
+                chat_id=chat_id,
+                user_id=user_id,
+                rule=rule,
+                count=1,
+                last_at=now,
+            ).on_conflict_do_update(
+                index_elements=["chat_id", "user_id", "rule"],  # соответствует uq_user_strike
+                set_={
+                    # если страйк старый -> начинаем заново с 1
+                    "count": case(
+                        (UserStrike.last_at < cutoff, 1),
+                        else_=(UserStrike.count + 1),
+                    ),
+                    "last_at": now,
+                }
             )
-            res = await session.execute(q)
-            obj = res.scalar_one_or_none()
 
-            if not obj:
-                obj = UserStrike(chat_id=chat_id, user_id=user_id, rule=rule, count=1, last_at=now)
-                session.add(obj)
-                await session.commit()
-                return 1
-
-            # reset if expired
-            if obj.last_at and (now - obj.last_at).total_seconds() > window_sec:
-                obj.count = 0
-
-            obj.count += 1
-            obj.last_at = now
+            await session.execute(stmt)
             await session.commit()
-            return obj.count
+
+            # вернуть актуальный count
+            res = await session.execute(
+                select(UserStrike.count).where(
+                    UserStrike.chat_id == chat_id,
+                    UserStrike.user_id == user_id,
+                    UserStrike.rule == rule,
+                )
+            )
+            return int(res.scalar_one())
 
     async def reset_strike(self, chat_id: int, user_id: int, rule: str) -> None:
         async with self.Session() as session:
