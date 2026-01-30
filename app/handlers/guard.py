@@ -4,6 +4,7 @@ import re
 from datetime import datetime, date
 from aiogram import Router, F
 from aiogram.utils.markdown import hbold
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.text_decorations import html_decoration as hd
@@ -34,6 +35,17 @@ DENY_ALL = ChatPermissions(
     can_add_web_page_previews=False,
     can_invite_users=False,
 )
+
+
+async def safe_answer(message: Message, *args, **kwargs):
+    try:
+        return await message.answer(*args, **kwargs)
+    except TelegramRetryAfter as e:
+        await asyncio.sleep(e.retry_after)
+        try:
+            return await message.answer(*args, **kwargs)
+        except Exception:
+            return None
 
 async def _is_subscribed(bot, channel_username: str, user_id: int) -> bool | None:
     """
@@ -69,7 +81,9 @@ def _mention(user) -> str:
     return f'<a href="tg://user?id={user.id}">{full}</a>'
 
 async def _send_temp(message: Message, text: str, seconds: int = 10):
-    warn = await message.answer(text, parse_mode="HTML")
+    warn = await safe_answer(message, text, parse_mode="HTML")
+    if not warn:
+        return
     async def _del():
         await asyncio.sleep(seconds)
         try:
@@ -193,11 +207,14 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             txt = f"🔒 {m} guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
             txt = _append_force_text(s, txt)
 
-            warn = await message.answer(
+            warn = await safe_answer(
+                message,
                 txt,
                 parse_mode="HTML",
                 disable_web_page_preview=True
             )
+            if not warn:
+                return
 
             async def _delete_later(chat_id: int, msg_id: int):
                 await asyncio.sleep(10)
@@ -242,18 +259,21 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                 if s.force_text:
                     txt += hd.quote(s.force_text.strip())
 
-                warn = await message.answer(
+                warn = await safe_answer(
+                    message,
                     txt,
                     parse_mode="HTML",
                     reply_markup=kb,
                     disable_web_page_preview=True
                 )
+                if not warn:
+                    return
 
                 # delete warning after N sec (sizda force_text_delete_sec bor)
                 try:
                     sec = int(s.force_text_delete_sec or 10)
                 except Exception:
-                    sec = 10
+                    sec = 60
 
                 async def _delete_later():
                     await asyncio.sleep(sec)
@@ -438,9 +458,12 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
     try:
         await message.bot.set_chat_permissions(message.chat.id, DENY_ALL)
         antiraid.set_locked(message.chat.id, close_sec)
-        await message.answer(
-            f"🚨 Anti-raid: chat yopildi.\n"
+        text = (f"🚨 Anti-raid: chat yopildi.\n"
             f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat",
+                )
+        await safe_answer(
+            message,
+            text,
             disable_web_page_preview=True
         )
     except Exception:
@@ -451,7 +474,7 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         await asyncio.sleep(close_sec)
         try:
             await message.bot.set_chat_permissions(message.chat.id, ALLOW_ALL)
-            await message.answer("✅ Anti-raid: chat qayta ochildi.")
+            await safe_answer(message, "✅ Anti-raid: chat qayta ochildi.")
         except Exception:
             pass
 
