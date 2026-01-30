@@ -176,57 +176,6 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     s = await db.get_or_create_settings(chat_id)
     text = _get_text(message)
 
-    # 0) Anti-flood
-    if s.antiflood_enabled:
-        exceeded = antiflood.hit(
-            chat_id=chat_id,
-            user_id=user.id,
-            window_sec=s.flood_window_sec,
-            max_msgs=s.flood_max_msgs,
-        )
-        if exceeded:
-            await _handle_violation(
-                message, db, config,
-                rule="antiflood",
-                warn_text="Belgilangan vaqt ichida keragidan ortiq habar yubormang aks xolda bloklanasiz.",
-                mute_text="Belgilangan vaqt ichida keragidan ortiq habar yuborganingiz uchun 2 daqiqaga bloklandingiz.",
-                mute_minutes=2
-            )
-            return
-
-    # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel:
-        res = await _is_subscribed(message.bot, s.linked_channel, user.id)
-        if res is False:
-            # удаляем сообщение и даем инструкцию (тихо и без спама)
-            try:
-                await message.delete()
-            except Exception:
-                pass
-            m = _mention(user)
-            txt = f"🔒 {m} guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
-            txt = _append_force_text(s, txt)
-
-            warn = await safe_answer(
-                message,
-                txt,
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-            if not warn:
-                return
-
-            async def _delete_later(chat_id: int, msg_id: int):
-                await asyncio.sleep(10)
-                try:
-                    await message.bot.delete_message(chat_id, msg_id)
-                except Exception:
-                    pass
-
-            asyncio.create_task(_delete_later(warn.chat.id, warn.message_id))
-            return
-            # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
-
     # Force add
     if s.force_add_enabled and not tg_admin:
         if not await db.is_force_priv(chat_id, user.id):
@@ -284,6 +233,57 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
                 asyncio.create_task(_delete_later())
                 return
+
+    # 0) Anti-flood
+    if s.antiflood_enabled:
+        exceeded = antiflood.hit(
+            chat_id=chat_id,
+            user_id=user.id,
+            window_sec=s.flood_window_sec,
+            max_msgs=s.flood_max_msgs,
+        )
+        if exceeded:
+            await _handle_violation(
+                message, db, config,
+                rule="antiflood",
+                warn_text="Belgilangan vaqt ichida keragidan ortiq habar yubormang aks xolda bloklanasiz.",
+                mute_text="Belgilangan vaqt ichida keragidan ortiq habar yuborganingiz uchun 2 daqiqaga bloklandingiz.",
+                mute_minutes=2
+            )
+            return
+
+    # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
+    if s.linked_channel:
+        res = await _is_subscribed(message.bot, s.linked_channel, user.id)
+        if res is False:
+            # удаляем сообщение и даем инструкцию (тихо и без спама)
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            m = _mention(user)
+            txt = f"🔒 {m} guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
+            txt = _append_force_text(s, txt)
+
+            warn = await safe_answer(
+                message,
+                txt,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+            if not warn:
+                return
+
+            async def _delete_later(chat_id: int, msg_id: int):
+                await asyncio.sleep(10)
+                try:
+                    await message.bot.delete_message(chat_id, msg_id)
+                except Exception:
+                    pass
+
+            asyncio.create_task(_delete_later(warn.chat.id, warn.message_id))
+            return
+            # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
     # 1) Канал-посты
     if s.block_channel_posts and is_channel_post(message):
