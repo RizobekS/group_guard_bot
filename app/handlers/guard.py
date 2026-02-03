@@ -94,12 +94,12 @@ async def _send_temp(message: Message, text: str, seconds: int = 10):
             pass
     asyncio.create_task(_del())
 
-def _append_force_text(s, txt: str) -> str:
-    extra = (getattr(s, "force_text", "") or "").strip()
-    if not extra:
-        return txt
-    # красивый quote, как вы уже делали
-    return txt + "\n\n" + hd.quote(extra)
+# def _append_force_text(s, txt: str) -> str:
+#     extra = (getattr(s, "force_text", "") or "").strip()
+#     if not extra:
+#         return txt
+#     # красивый quote, как вы уже делали
+#     return txt + "\n\n" + hd.quote(extra)
 
 async def _handle_violation(
     message: Message,
@@ -138,8 +138,8 @@ async def _handle_violation(
     m = _mention(user)
 
     # текст предупреждения + textforce (если задан)
-    warn_full = _append_force_text(s, f"{m} {warn_text}")
-    mute_full = _append_force_text(s, f"{m} {mute_text} ({mute_minutes} daqiqa)")
+    warn_full = f"{m} {warn_text}"
+    mute_full = f"{m} {mute_text} ({mute_minutes} daqiqa)"
 
     # менеджеров не наказываем, только предупреждаем
     if is_manager:
@@ -158,7 +158,7 @@ async def _handle_violation(
     else:
         await _send_temp(
             message,
-            _append_force_text(s, f"{m} {mute_text} (lekin cheklashga ruxsat yo‘q)"),
+            f"{m} {mute_text} (lekin cheklashga ruxsat yo‘q)",
             seconds=bot_msg_delete_sec
         )
 
@@ -255,7 +255,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             return
 
     # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel:
+    if s.linked_channel and not tg_admin:
         res = await _is_subscribed(message.bot, s.linked_channel, user.id)
         if res is False:
             # удаляем сообщение и даем инструкцию (тихо и без спама)
@@ -265,7 +265,6 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                 pass
             m = _mention(user)
             txt = f"🔒 {m} guruhda yozish uchun @{s.linked_channel} kanaliga obuna bo‘ling."
-            txt = _append_force_text(s, txt)
 
             warn = await safe_answer(
                 message,
@@ -348,10 +347,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
         m = _mention(user)
         if hits <= s.ads_daily_limit:
-            msg = _append_force_text(
-                s,
-                f"{m} reklama yubormang. Limit: {s.ads_daily_limit}/kun. Hozir: {hits}."
-            )
+            msg = f"{m} reklama yubormang. Limit: {s.ads_daily_limit}/kun. Hozir: {hits}."
             await _send_temp(message, msg, seconds=10)
             return
 
@@ -360,13 +356,13 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         if muted:
             await _send_temp(
                 message,
-                _append_force_text(s, f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)"),
+                f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)",
                 seconds=10
             )
         else:
             await _send_temp(
                 message,
-                _append_force_text(s, f"{m} reklama limitidan oshdingiz (lekin cheklashga ruxsat yo‘q)"),
+                f"{m} reklama limitidan oshdingiz (lekin cheklashga ruxsat yo‘q)",
                 seconds=10
             )
         return
