@@ -6,7 +6,7 @@ from aiogram import Router, F
 from aiogram.utils.markdown import hbold
 from aiogram.exceptions import TelegramRetryAfter
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
-from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton, ChatMemberUpdated
 from aiogram.utils.text_decorations import html_decoration as hd
 from ..db import DB
 from ..config import Config
@@ -489,6 +489,33 @@ async def guard_leave(message: Message, db: DB, config: Config):
             await message.delete()
         except Exception:
             pass
+
+@router.chat_member(F.chat.type.in_({"group", "supergroup"}))
+async def guard_chat_member(update: ChatMemberUpdated, db: DB):
+    chat_id = update.chat.id
+    s = await db.get_or_create_settings(chat_id)
+
+    old_status = getattr(update.old_chat_member, "status", None)
+    new_status = getattr(update.new_chat_member, "status", None)
+
+    if old_status not in ("left", "kicked"):
+        return
+    if new_status not in ("member", "restricted", "administrator", "creator"):
+        return
+
+    if not s.force_add_enabled:
+        return
+
+    inviter = update.from_user
+    new_user = update.new_chat_member.user
+
+    if not inviter or inviter.id == new_user.id:
+        return
+
+    if getattr(new_user, "is_bot", False):
+        return
+
+    await db.inc_force_progress(chat_id, inviter.id, 1)
 
 
 @router.message(F.chat.type.in_({"group", "supergroup"}))

@@ -27,7 +27,7 @@ async def main():
     dp.include_router(guard.router)
     dp.include_router(ads.router)
 
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types() | {"chat_member"})
 
 if __name__ == "__main__":
     asyncio.run(main())
