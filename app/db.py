@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import select, delete, case
+from sqlalchemy import select, delete, case, NullPool, event
 from .models import (
     Base,
     ChatSettings,
@@ -21,8 +21,21 @@ from .models import (
 )
 class DB:
     def __init__(self, database_url: str):
-        self.engine = create_async_engine(database_url, echo=False)
+        self.engine = create_async_engine(
+            database_url,
+            echo=False,
+            poolclass=NullPool,  # для sqlite часто лучше без пула
+            connect_args={"timeout": 30},  # ждём до 30 секунд, вместо "сразу упасть"
+        )
         self.Session = async_sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+        @event.listens_for(self.engine.sync_engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL;")  # лучший режим для многопоточности
+            cursor.execute("PRAGMA synchronous=NORMAL;")  # нормальный компромисс скорости/надёжности
+            cursor.execute("PRAGMA busy_timeout=30000;")  # 30 секунд ждать разблокировки
+            cursor.close()
 
     async def init_models(self):
         async with self.engine.begin() as conn:

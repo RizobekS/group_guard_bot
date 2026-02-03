@@ -1,6 +1,7 @@
 # app/handlers/guard.py
 import asyncio
 import re
+import time
 from datetime import datetime, date
 from aiogram import Router, F
 from aiogram.utils.markdown import hbold
@@ -36,6 +37,7 @@ DENY_ALL = ChatPermissions(
     can_invite_users=False,
 )
 
+_last_touch: dict[int, float] = {}
 
 async def safe_answer(message: Message, *args, **kwargs):
     try:
@@ -421,24 +423,6 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         except Exception:
             pass
 
-    # 2) FORCE-ADD прогресс: считаем ВСЕГДА, если это РУЧНОЕ добавление
-    # Telegram: при join по ссылке from_user обычно == сам вошедший -> это НЕ "я добавил людей"
-    if s.force_add_enabled and message.from_user:
-        inviter = message.from_user
-        new_members = list(message.new_chat_members or [])
-
-        # убираем бота и самого inviter (на случай странных кейсов)
-        new_members = [m for m in new_members if not getattr(m, "is_bot", False) and m.id != inviter.id]
-
-        # если inviter добавил кого-то вручную, то inviter != added_user (обычно так и бывает)
-        # если люди зашли сами по ссылке, inviter == joiner -> new_members после фильтра станет пустым
-        if new_members:
-            try:
-                await db.inc_force_progress(message.chat.id, inviter.id, len(new_members))
-                print(f"[force_add] chat={message.chat.id} inviter={inviter.id} +{len(new_members)}")
-            except Exception as e:
-                print(f"[force_add] cannot inc progress chat={message.chat.id} inviter={inviter.id}: {e}")
-
     # 3) ANTI-RAID (считает любых входящих, и ручных и по ссылке, потому что это "навалились люди")
     join_count = len(message.new_chat_members or [])
     window_hours = int(s.raid_window_min)
@@ -495,6 +479,9 @@ async def guard_chat_member(update: ChatMemberUpdated, db: DB):
     chat_id = update.chat.id
     s = await db.get_or_create_settings(chat_id)
 
+    if not s.force_add_enabled:
+        return
+
     old_status = getattr(update.old_chat_member, "status", None)
     new_status = getattr(update.new_chat_member, "status", None)
 
@@ -503,25 +490,42 @@ async def guard_chat_member(update: ChatMemberUpdated, db: DB):
     if new_status not in ("member", "restricted", "administrator", "creator"):
         return
 
-    if not s.force_add_enabled:
-        return
-
     inviter = update.from_user
     new_user = update.new_chat_member.user
 
-    if not inviter or inviter.id == new_user.id:
+    if not inviter or not new_user:
+        return
+
+    if inviter.id == new_user.id:
         return
 
     if getattr(new_user, "is_bot", False):
         return
 
-    await db.inc_force_progress(chat_id, inviter.id, 1)
+    try:
+        tg_admin = await is_admin(update.bot, chat_id, inviter.id)
+    except Exception:
+        tg_admin = False
+    if tg_admin:
+        return
 
+    await db.inc_force_progress(chat_id, inviter.id, 1)
 
 @router.message(F.chat.type.in_({"group", "supergroup"}))
 async def guard_all(message: Message, db: DB, antiflood, config: Config):
     if message.new_chat_members or message.left_chat_member:
         return
-    # фиксируем чат как активный даже без команд
-    await db.touch_chat(message.chat.id, message.chat.title or "")
+
+    chat_id = message.chat.id
+    now = time.monotonic()
+
+    # трогаем чат в БД максимум раз в 30 сек
+    last = _last_touch.get(chat_id, 0.0)
+    if now - last >= 30.0:
+        _last_touch[chat_id] = now
+        try:
+            await db.touch_chat(chat_id, message.chat.title or "")
+        except Exception:
+            pass
+
     await _process(message, db, antiflood, config)
