@@ -464,6 +464,90 @@ async def cmd_add(message: Message, command: CommandObject, db: DB, config: Conf
     await message.reply(f"Force add yoqildi: {command.args} ta odam")
 
 
+def _parse_duration_to_seconds(raw: str) -> int | None:
+    """
+    Accept:
+      - "7200"
+      - "30s", "10m", "2h"
+      - also accepts "sec", "min", "hour" in a грубый way
+    """
+    s = (raw or "").strip().lower()
+    if not s:
+        return None
+
+    # OFF variants
+    if s in {"0", "off", "yoq", "no"}:
+        return 0
+
+    # normalize words
+    s = s.replace("секунд", "s").replace("сек", "s").replace("second", "s").replace("sec", "s")
+    s = s.replace("минут", "m").replace("мин", "m").replace("minute", "m").replace("min", "m")
+    s = s.replace("час", "h").replace("soat", "h").replace("hour", "h")
+
+    # pure digits => seconds
+    if s.isdigit():
+        return int(s)
+
+    # number + suffix
+    m = re.match(r"^(\d+)\s*([smh])$", s)
+    if not m:
+        return None
+
+    n = int(m.group(1))
+    unit = m.group(2)
+
+    if unit == "s":
+        return n
+    if unit == "m":
+        return n * 60
+    if unit == "h":
+        return n * 3600
+    return None
+
+
+@router.message(Command("text_repeat"))
+async def cmd_text_repeat(message: Message, command: CommandObject, db: DB, config: Config, text_repeater):
+    """
+    /text_repeat 2h
+    /text_repeat 120m
+    /text_repeat 7200
+    /text_repeat 0  (OFF)
+    """
+    if not await can_manage_bot(message, db, config):
+        return
+
+    s = await db.get_or_create_settings(message.chat.id)
+
+    if not command.args:
+        cur = int(getattr(s, "force_text_repeat_sec", 0) or 0)
+        await message.reply(f"Foydalanish: /text_repeat 2h | 120m | 60s | 7200 | 0\nHozirgi: {cur} sec")
+        return
+
+    sec = _parse_duration_to_seconds(command.args)
+    if sec is None:
+        await message.reply("Noto‘g‘ri format. Masalan: /text_repeat 2h yoki /text_repeat 120m yoki /text_repeat 0")
+        return
+
+    # basic sanity limits (so nobody ставит 1 сек и потом плачет)
+    if sec != 0 and sec < 30:
+        await message.reply("Juda kichik. Minimal: 30s (yoki 0 - OFF).")
+        return
+    if sec > 7 * 24 * 3600:
+        await message.reply("Juda katta. Maksimal: 7 kun (604800s).")
+        return
+
+    await db.update_settings(message.chat.id, force_text_repeat_sec=sec)
+    s = await db.get_or_create_settings(message.chat.id)
+
+    if sec == 0:
+        text_repeater.stop(message.chat.id)
+        await message.reply("✅ text_repeat: OFF")
+        return
+
+    # start (or restart) task
+    text_repeater.start(message.chat.id)
+    await message.reply(f"✅ text_repeat yoqildi: har {sec} sekundda.\nXabar /text_time bo‘yicha o‘chadi.")
+
 @router.message(Command("textforce"))
 async def cmd_textforce(message: Message, command: CommandObject, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):

@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import select, delete, case, NullPool, event
+from sqlalchemy import select, delete, case, NullPool, event, text
 from .models import (
     Base,
     ChatSettings,
@@ -40,6 +40,22 @@ class DB:
     async def init_models(self):
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+            # SQLite tuning (best-effort)
+            try:
+                await conn.execute(text("PRAGMA journal_mode=WAL;"))
+                await conn.execute(text("PRAGMA busy_timeout=5000;"))
+            except Exception:
+                pass
+
+            # ---- auto-migrate: add missing column force_text_repeat_sec ----
+            try:
+                await conn.execute(
+                    text("ALTER TABLE chat_settings ADD COLUMN force_text_repeat_sec INTEGER NOT NULL DEFAULT 0;")
+                )
+            except Exception:
+                # column already exists or SQLite limitation -> ignore
+                pass
 
     async def touch_chat(self, chat_id: int, title: str = "") -> None:
         async with self.Session() as session:

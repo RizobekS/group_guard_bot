@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from app.utils.text_repeater import TextRepeater
 from .config import load_config
 from .db import DB
 from .handlers import base, settings, guard, ads
@@ -21,6 +22,10 @@ async def main():
     dp["antiflood"] = AntiFlood()
     dp["antiraid"] = AntiRaid()
     dp["config"] = cfg
+
+    repeater = TextRepeater(bot, db)
+    dp["text_repeater"] = repeater
+    await repeater.restore_from_db()
 
     dp.include_router(base.router)
     dp.include_router(settings.router)
