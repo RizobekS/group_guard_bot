@@ -629,7 +629,7 @@ async def cmd_deforce(message: Message, db: DB, config: Config):
     await message.reply("✅ Force add ma’lumotlari tozalandi.")
 
 
-@router.message(Command("/unmute"))
+@router.message(Command("unmute"))
 async def cmd_unmute(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return

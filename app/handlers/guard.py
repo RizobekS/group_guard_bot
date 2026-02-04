@@ -13,7 +13,7 @@ from ..db import DB
 from ..config import Config
 from ..utils.access import can_manage_chat
 from ..utils.access import can_manage_bot
-from ..utils.moderation import has_link, has_arabic, looks_like_ads, is_channel_post, text_hash, mute_user
+from ..utils.moderation import has_link, has_arabic, looks_like_ads, is_channel_post, text_hash, mute_user, mute_user_seconds, unmute_user
 from ..utils.antiraid import AntiRaid
 from ..utils.admin import is_admin
 
@@ -38,6 +38,8 @@ DENY_ALL = ChatPermissions(
 )
 
 _last_touch: dict[int, float] = {}
+_media_cache: dict[tuple[int, str], dict] = {}
+_album_warned: dict[tuple[int, int, str, str], float] = {}
 
 async def safe_answer(message: Message, *args, **kwargs):
     try:
@@ -48,6 +50,12 @@ async def safe_answer(message: Message, *args, **kwargs):
             return await message.answer(*args, **kwargs)
         except Exception:
             return None
+
+def _cleanup_album_warned(ttl_sec: int = 15):
+    now = time.monotonic()
+    for key in list(_album_warned.keys()):
+        if now - float(_album_warned[key]) > ttl_sec:
+            _album_warned.pop(key, None)
 
 async def _is_subscribed(bot, channel_username: str, user_id: int) -> bool | None:
     """
@@ -94,6 +102,86 @@ async def _send_temp(message: Message, text: str, seconds: int = 10):
             pass
     asyncio.create_task(_del())
 
+def _schedule_auto_unmute(bot, chat_id: int, user_id: int, seconds: int):
+    if seconds <= 0:
+        return
+
+    async def _job():
+        await asyncio.sleep(seconds + 1)
+        try:
+            await unmute_user(bot, chat_id, user_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_job())
+
+
+def _remember_media(message: Message):
+    """
+    Remember message ids for albums (media_group_id), so later we can delete whole album.
+    """
+    if not message.media_group_id:
+        return
+    key = (message.chat.id, str(message.media_group_id))
+    entry = _media_cache.get(key)
+    now = time.monotonic()
+    if not entry:
+        _media_cache[key] = {"ids": [message.message_id], "ts": now}
+        return
+    if message.message_id not in entry["ids"]:
+        entry["ids"].append(message.message_id)
+    entry["ts"] = now
+
+
+def _cleanup_media_cache(ttl_sec: int = 60):
+    """
+    Best-effort cleanup to prevent memory leak.
+    """
+    now = time.monotonic()
+    for key in list(_media_cache.keys()):
+        if now - float(_media_cache[key].get("ts", 0)) > ttl_sec:
+            _media_cache.pop(key, None)
+
+
+async def _delete_message_or_album(message: Message):
+    """
+    Deletes a single message or the whole album (media group) if present.
+    """
+    # clean old cached groups sometimes
+    _cleanup_media_cache(ttl_sec=120)
+
+    if message.media_group_id:
+        key = (message.chat.id, str(message.media_group_id))
+        entry = _media_cache.get(key)
+        ids = []
+        if entry and entry.get("ids"):
+            ids = list(entry["ids"])
+        # ensure current msg id included
+        if message.message_id not in ids:
+            ids.append(message.message_id)
+
+        # try delete all ids
+        for mid in ids:
+            try:
+                await message.bot.delete_message(message.chat.id, mid)
+            except Exception:
+                pass
+
+        # remove from cache
+        _media_cache.pop(key, None)
+        return
+
+    # normal message
+    try:
+        await message.delete()
+    except Exception:
+        # fallback
+        try:
+            await message.bot.delete_message(message.chat.id, message.message_id)
+        except Exception:
+            pass
+
+
 # def _append_force_text(s, txt: str) -> str:
 #     extra = (getattr(s, "force_text", "") or "").strip()
 #     if not extra:
@@ -131,9 +219,17 @@ async def _handle_violation(
 
     # удаляем нарушающее сообщение
     try:
-        await message.delete()
+        await _delete_message_or_album(message)
     except Exception:
         pass
+
+    if message.media_group_id:
+        _cleanup_album_warned(ttl_sec=20)
+        k = (chat_id, user.id, str(message.media_group_id), rule)
+        if k in _album_warned:
+            # уже предупреждали за этот альбом -> просто молча выходим
+            return
+        _album_warned[k] = time.monotonic()
 
     m = _mention(user)
 
@@ -155,6 +251,7 @@ async def _handle_violation(
     muted = await mute_user(message.bot, chat_id, user.id, minutes=mute_minutes)
     if muted:
         await _send_temp(message, mute_full, seconds=bot_msg_delete_sec)
+        _schedule_auto_unmute(message.bot, chat_id, user.id, mute_minutes * 60)
     else:
         await _send_temp(
             message,
@@ -177,6 +274,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
     s = await db.get_or_create_settings(chat_id)
     text = _get_text(message)
+    _remember_media(message)
 
     # Force add
     if s.force_add_enabled and not tg_admin:
@@ -219,9 +317,20 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
                 # delete warning after N sec (sizda force_text_delete_sec bor)
                 try:
-                    sec = int(s.force_text_delete_sec or 10)
+                    sec = int(s.force_text_delete_sec or 60)
                 except Exception:
                     sec = 60
+
+                await mute_user_seconds(message.bot, chat_id, user.id, sec)
+
+                async def _auto_unmute():
+                    await asyncio.sleep(sec + 1)
+                    try:
+                        await unmute_user(message.bot, chat_id, user.id)
+                    except Exception:
+                        pass
+
+                asyncio.create_task(_auto_unmute())
 
                 async def _delete_later():
                     await asyncio.sleep(sec)
@@ -356,6 +465,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                 f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)",
                 seconds=10
             )
+            _schedule_auto_unmute(message.bot, chat_id, user.id, 300 * 60)
         else:
             await _send_temp(
                 message,

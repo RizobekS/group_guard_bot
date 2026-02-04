@@ -37,6 +37,7 @@ MUTE_PERMS = ChatPermissions(
     can_send_polls=False,
     can_send_other_messages=False,
     can_add_web_page_previews=False,
+    can_invite_users=True,
 )
 
 UNMUTE_PERMS = ChatPermissions(
@@ -45,6 +46,7 @@ UNMUTE_PERMS = ChatPermissions(
     can_send_polls=True,
     can_send_other_messages=True,
     can_add_web_page_previews=True,
+    can_invite_users=True,
 )
 
 def normalize_text(text: str) -> str:
@@ -75,6 +77,23 @@ def looks_like_ads(text: str) -> bool:
     if has_link(norm):
         return True
     return any(k in norm for k in ADS_KEYWORDS)
+
+async def mute_user_seconds(bot, chat_id: int, user_id: int, seconds: int) -> bool:
+    if seconds <= 0:
+        return False
+    until = datetime.utcnow() + timedelta(seconds=int(seconds))
+    until_ts = int(until.timestamp())
+    try:
+        await bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            permissions=MUTE_PERMS,
+            until_date=until_ts
+        )
+        return True
+    except TelegramBadRequest as e:
+        print(f"[mute_user_seconds] cannot restrict user {user_id} in chat {chat_id}: {e}")
+        return False
 
 async def mute_user(bot, chat_id: int, user_id: int, minutes: int) -> bool:
     until = datetime.utcnow() + timedelta(minutes=minutes)

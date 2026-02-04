@@ -198,7 +198,8 @@ HELP_ALL = (
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "🧹 <b>Tozalash</b>\n"
-    "• <b>/clean</b> (reply) — 🧽 Foydalanuvchi statistikasini tozalaydi.\n\n"
+    "• <b>/clean</b> (reply) — 🧽 Foydalanuvchi statistikasini tozalaydi va unmute qiladi.\n"
+    "• <b>/unmute</b> (reply) — 🔓 Foydalanuvchi unmute qiladi.\n\n"
 
     "👮 <b>BOT ADMINLARI</b>\n"
     "• <b>/botadmin_add</b> (reply) — ➕ Bot admin qo‘shish.\n"
