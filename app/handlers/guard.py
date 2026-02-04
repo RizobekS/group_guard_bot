@@ -443,34 +443,44 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     # 5) Реклама
-    if s.block_ads and looks_like_ads(text):
+    if s.block_ads and looks_like_ads(text) and not tg_admin:
         # удаляем сразу
         try:
             await message.delete()
         except Exception:
             pass
+
+        # 2) если это альбом — предупреждаем/считаем лимит только один раз на весь альбом
+        if message.media_group_id:
+            _cleanup_album_warned(ttl_sec=30)  # чуть больше, чтобы точно хватило
+            album_key = (chat_id, user.id, str(message.media_group_id), "ads")
+            if album_key in _album_warned:
+                return
+            _album_warned[album_key] = time.monotonic()
+
+        # 3) считаем лимит (один раз на событие)
         hits = await db.inc_ads_hits(chat_id, user.id, day=date.today(), inc=1)
 
         m = _mention(user)
         if hits <= s.ads_daily_limit:
             msg = f"{m} reklama yubormang. Limit: {s.ads_daily_limit}/kun. Hozir: {hits}."
-            await _send_temp(message, msg, seconds=10)
+            await _send_temp(message, msg, seconds=60)
             return
 
-        # превысил лимит
+        # 4) превысил лимит -> mute + auto-unmute
         muted = await mute_user(message.bot, chat_id, user.id, minutes=300)
         if muted:
             await _send_temp(
                 message,
                 f"{m} reklama limitidan oshdingiz, blok! (300 daqiqa)",
-                seconds=10
+                seconds=60
             )
             _schedule_auto_unmute(message.bot, chat_id, user.id, 300 * 60)
         else:
             await _send_temp(
                 message,
                 f"{m} reklama limitidan oshdingiz (lekin cheklashga ruxsat yo‘q)",
-                seconds=10
+                seconds=60
             )
         return
 
