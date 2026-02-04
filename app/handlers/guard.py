@@ -206,9 +206,6 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
                     f"⏳ Yana kerak: <b>{need}</b> ta\n\n"
                 )
 
-                # Agar admin /textforce bilan custom matn bergan bo'lsa, pastiga qo'shib yuboramiz
-                if s.force_text:
-                    txt += hd.quote(s.force_text.strip())
 
                 warn = await safe_answer(
                     message,
