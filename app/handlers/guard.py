@@ -282,8 +282,16 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             added = await db.get_force_progress(chat_id, user.id)
             required = int(s.force_add_required)
             if added < required:
+
+                if message.media_group_id:
+                    _cleanup_album_warned(ttl_sec=30)
+                    k = (chat_id, user.id, str(message.media_group_id), "force_add")
+                    if k in _album_warned:
+                        return
+                    _album_warned[k] = time.monotonic()
+
                 try:
-                    await message.delete()
+                    await _delete_message_or_album(message)
                 except Exception:
                     pass
 
