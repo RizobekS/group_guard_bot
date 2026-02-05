@@ -462,9 +462,8 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
     # 5) Реклама
     if s.block_ads and looks_like_ads(text):
-        # удаляем сразу
         try:
-            await message.delete()
+            await _delete_message_or_album(message)
         except Exception:
             pass
 

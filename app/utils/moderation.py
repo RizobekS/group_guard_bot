@@ -66,17 +66,18 @@ def has_link(text: str) -> bool:
 def has_arabic(text: str) -> bool:
     return bool(ARABIC_RE.search(text or ""))
 
-# супер простая эвристика рекламы (потом улучшим)
-ADS_KEYWORDS = {
-    "reklama", "реклама", "obuna", "подпиш", "подписывай", "скидк", "акция", "kanal", "канал", "пул",
-    "pul", "деньги", "доход", "zarabot", "работа", "ish", "telegram", "tg", "rek", "daromad", "admin", "админ", "даромад"
-}
+
+ADS_STRONG = {"reklama", "реклама", "obuna", "подпиш", "подписывай", "канал", "kanal", "daromad", "даромад"}
+ADS_WEAK = {"pul", "деньги", "доход", "ish", "работа", "admin", "админ", "tg", "telegram"}
 
 def looks_like_ads(text: str) -> bool:
     norm = normalize_text(text)
-    if has_link(norm):
+    if any(k in norm for k in ADS_STRONG):
         return True
-    return any(k in norm for k in ADS_KEYWORDS)
+    # слабые только если есть реальная ссылка
+    if has_link(norm) and any(k in norm for k in ADS_WEAK):
+        return True
+    return False
 
 async def mute_user_seconds(bot, chat_id: int, user_id: int, seconds: int) -> bool:
     if seconds <= 0:
