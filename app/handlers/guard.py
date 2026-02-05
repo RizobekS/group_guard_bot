@@ -142,6 +142,16 @@ def _cleanup_media_cache(ttl_sec: int = 60):
         if now - float(_media_cache[key].get("ts", 0)) > ttl_sec:
             _media_cache.pop(key, None)
 
+async def _safe_delete(bot, chat_id: int, mid: int):
+    for _ in range(3):
+        try:
+            await bot.delete_message(chat_id, mid)
+            return True
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after)
+        except Exception:
+            return False
+    return False
 
 async def _delete_message_or_album(message: Message):
     """
@@ -152,6 +162,7 @@ async def _delete_message_or_album(message: Message):
 
     if message.media_group_id:
         key = (message.chat.id, str(message.media_group_id))
+        await asyncio.sleep(0.8)
         entry = _media_cache.get(key)
         ids = []
         if entry and entry.get("ids"):
@@ -161,25 +172,24 @@ async def _delete_message_or_album(message: Message):
             ids.append(message.message_id)
 
         # try delete all ids
-        for mid in ids:
-            try:
-                await message.bot.delete_message(message.chat.id, mid)
-            except Exception:
-                pass
+        for _pass in range(2):
+            for mid in list(ids):
+                ok = await _safe_delete(message.bot, message.chat.id, mid)
+                if ok and mid in ids:
+                    ids.remove(mid)
+            if not ids:
+                break
+            await asyncio.sleep(0.4)
+            entry = _media_cache.get(key) or {}
+            more = entry.get("ids") or []
+            for mid in more:
+                if mid not in ids:
+                    ids.append(mid)
 
-        # remove from cache
         _media_cache.pop(key, None)
         return
 
-    # normal message
-    try:
-        await message.delete()
-    except Exception:
-        # fallback
-        try:
-            await message.bot.delete_message(message.chat.id, message.message_id)
-        except Exception:
-            pass
+    await _safe_delete(message.bot, message.chat.id, message.message_id)
 
 
 # def _append_force_text(s, txt: str) -> str:
