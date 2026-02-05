@@ -461,7 +461,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     # 5) Реклама
-    if s.block_ads and looks_like_ads(text) and not tg_admin:
+    if s.block_ads and looks_like_ads(text):
         # удаляем сразу
         try:
             await message.delete()

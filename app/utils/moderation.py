@@ -68,8 +68,8 @@ def has_arabic(text: str) -> bool:
 
 # супер простая эвристика рекламы (потом улучшим)
 ADS_KEYWORDS = {
-    "reklama", "реклама", "obuna", "подпиш", "подписывай", "скидк", "акция", "kanal", "канал",
-    "pul", "деньги", "доход", "zarabot", "работа", "ish", "telegram", "tg", "rek"
+    "reklama", "реклама", "obuna", "подпиш", "подписывай", "скидк", "акция", "kanal", "канал", "пул",
+    "pul", "деньги", "доход", "zarabot", "работа", "ish", "telegram", "tg", "rek", "daromad", "admin", "админ", "даромад"
 }
 
 def looks_like_ads(text: str) -> bool:
