@@ -5,6 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import Command, CommandObject
 from aiogram.types import ChatPermissions
 
+from .guard import _normalize_for_badwords
 from ..config import Config
 from ..db import DB
 from .base import settings_text
@@ -402,7 +403,7 @@ async def cmd_yomonqosh(message: Message, db: DB, config: Config):
         await message.reply("Foydalanish: /yomonqosh so‘z")
         return
 
-    word = parts[1].strip().lower()
+    word = _normalize_for_badwords(parts[1])
     if len(word) < 2 or len(word) > 30:
         await message.reply("So‘z uzunligi 2..30 oralig‘ida bo‘lsin.")
         return
@@ -422,7 +423,7 @@ async def cmd_yomondel(message: Message, db: DB, config: Config):
     if len(parts) < 2:
         await message.reply("Foydalanish: /yomondel so‘z")
         return
-    word = parts[1].strip().lower()
+    word = _normalize_for_badwords(parts[1])
     await db.remove_bad_word(message.chat.id, word)
     await message.reply(f"✅ O‘chirildi: <code>{word}</code>")
 

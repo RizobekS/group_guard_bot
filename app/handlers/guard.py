@@ -81,6 +81,16 @@ def _normalize_for_words(text: str) -> str:
     t = re.sub(r"\s+", " ", t).strip()
     return f" {t} "
 
+def _normalize_for_badwords(text: str) -> str:
+    t = (text or "").lower()
+    # унифицируем апострофы
+    t = t.replace("’", "'").replace("ʻ", "'").replace("`", "'")
+    # всё кроме букв/цифр/подчёрк/апострофа -> пробел
+    t = re.sub(r"[^\w']+", " ", t, flags=re.UNICODE)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def _get_text(message: Message) -> str:
     return message.text or message.caption or ""
 
@@ -502,10 +512,25 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
         return
 
     if s.block_swear and text.strip():
-        norm = _normalize_for_words(text)
+        norm = _normalize_for_badwords(text)
+        padded = f" {norm} "
+        tokens = set(norm.split())
         bad_words = await db.list_bad_words(chat_id, limit=200)
         for w in bad_words:
-            if f" {w} " in norm:
+            bw = _normalize_for_badwords(w)
+
+            if not bw:
+                continue
+            if bw in tokens:
+                await _handle_violation(
+                    message, db, config,
+                    rule="swear",
+                    warn_text="so‘kinish mumkin emas. Yana takrorlansa blok bo‘ladi.",
+                    mute_text="so‘kinganingiz uchun bloklandingiz.",
+                    mute_minutes=300,  # 5 soat
+                )
+                return
+            if len(bw) >= 4 and bw in padded:
                 await _handle_violation(
                     message, db, config,
                     rule="swear",
