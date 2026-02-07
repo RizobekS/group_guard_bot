@@ -67,8 +67,8 @@ def has_arabic(text: str) -> bool:
     return bool(ARABIC_RE.search(text or ""))
 
 
-ADS_STRONG = {"reklama", "реклама", "obuna", "подпиш", "подписывай", "канал", "kanal", "daromad", "даромад", "pul", "деньги", "доход", "ish", "работа", "admin", "админ", }
-ADS_WEAK = {"tg", "telegram"}
+ADS_STRONG = {"reklama", "реклама", "obuna", "подпиш", "подписывай", "канал", "kanal", "daromad", "даромад", "pul", "деньги", "доход", "работа", "admin", "админ", }
+ADS_WEAK = {"ish", "tg", "telegram"}
 
 def looks_like_ads(text: str) -> bool:
     norm = normalize_text(text)
