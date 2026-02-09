@@ -5,7 +5,7 @@ import time
 from datetime import datetime, date
 from aiogram import Router, F
 from aiogram.utils.markdown import hbold
-from aiogram.exceptions import TelegramRetryAfter
+from aiogram.exceptions import TelegramRetryAfter, TelegramNetworkError
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import Message, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton, ChatMemberUpdated
 from aiogram.utils.text_decorations import html_decoration as hd
@@ -42,14 +42,17 @@ _media_cache: dict[tuple[int, str], dict] = {}
 _album_warned: dict[tuple[int, int, str, str], float] = {}
 
 async def safe_answer(message: Message, *args, **kwargs):
-    try:
-        return await message.answer(*args, **kwargs)
-    except TelegramRetryAfter as e:
-        await asyncio.sleep(e.retry_after)
+    for attempt in range(3):
         try:
             return await message.answer(*args, **kwargs)
-        except Exception:
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after)
+        except TelegramNetworkError:
+            await asyncio.sleep(1 + attempt)
+        except Exception as e:
+            print(f"[safe_answer] failed: {type(e).__name__}: {e}")
             return None
+    return None
 
 def _cleanup_album_warned(ttl_sec: int = 15):
     now = time.monotonic()
@@ -599,13 +602,15 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         await message.bot.set_chat_permissions(message.chat.id, DENY_ALL)
         antiraid.set_locked(message.chat.id, close_sec)
         text = (f"🚨 Anti-raid: chat yopildi.\n"
-            f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat",
+            f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat"
                 )
-        await safe_answer(
+        sent = await safe_answer(
             message,
             text,
             disable_web_page_preview=True
         )
+        if not sent:
+            print(f"[antiraid] notify failed chat={message.chat.id} limit={s.raid_limit}")
     except Exception:
         return
 
@@ -614,7 +619,9 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         await asyncio.sleep(close_sec)
         try:
             await message.bot.set_chat_permissions(message.chat.id, ALLOW_ALL)
-            await safe_answer(message, "✅ Anti-raid: chat qayta ochildi.")
+            sent_open_chat = await safe_answer(message, "✅ Anti-raid: chat qayta ochildi.")
+            if not sent_open_chat:
+                print(f"[antiraid open chat] notify failed chat={message.chat.id} limit={s.raid_limit}")
         except Exception:
             pass
 
