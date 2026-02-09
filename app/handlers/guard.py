@@ -568,6 +568,69 @@ async def guard_service_messages(message: Message, db: DB, config: Config):
     except Exception:
         pass
 
+async def _antiraid_trigger(
+    bot,
+    chat_id: int,
+    s,
+    antiraid: AntiRaid,
+    message: Message | None = None,
+    join_count: int = 1,
+):
+    window_hours = int(s.raid_window_min)
+    close_hours = int(s.raid_close_min)
+    window_sec = window_hours * 3600
+    close_sec = close_hours * 3600
+
+    triggered = antiraid.hit(
+        chat_id=chat_id,
+        join_count=join_count,
+        window_sec=window_sec,
+        limit=int(s.raid_limit),
+    )
+    if not triggered:
+        return
+
+    try:
+        await bot.set_chat_permissions(chat_id, DENY_ALL)
+        antiraid.set_locked(chat_id, close_sec)
+    except Exception as e:
+        print(f"[antiraid] set_chat_permissions failed chat={chat_id}: {type(e).__name__}: {e}")
+        return
+
+    text = (
+        f"🚨 Anti-raid: chat yopildi.\n"
+        f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat"
+    )
+
+    # Если у нас нет Message (chat_member update), шлём напрямую
+    try:
+        if message:
+            sent = await safe_answer(message, text, disable_web_page_preview=True)
+            if not sent:
+                print(f"[antiraid] notify failed chat={chat_id} limit={s.raid_limit}")
+        else:
+            await bot.send_message(chat_id, text, disable_web_page_preview=True)
+    except Exception as e:
+        print(f"[antiraid] notify failed chat={chat_id}: {type(e).__name__}: {e}")
+
+    async def _reopen():
+        await asyncio.sleep(close_sec)
+        try:
+            await bot.set_chat_permissions(chat_id, ALLOW_ALL)
+            try:
+                if message:
+                    sent2 = await safe_answer(message, "✅ Anti-raid: chat qayta ochildi.")
+                    if not sent2:
+                        print(f"[antiraid open] notify failed chat={chat_id}")
+                else:
+                    await bot.send_message(chat_id, "✅ Anti-raid: chat qayta ochildi.")
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"[antiraid] reopen failed chat={chat_id}: {type(e).__name__}: {e}")
+
+    asyncio.create_task(_reopen())
+
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), F.new_chat_members)
 async def guard_join(message: Message, db: DB, antiraid, config: Config):
@@ -581,51 +644,18 @@ async def guard_join(message: Message, db: DB, antiraid, config: Config):
         except Exception:
             pass
 
-    # 3) ANTI-RAID (считает любых входящих, и ручных и по ссылке, потому что это "навалились люди")
+      # Anti-raid: используем единую функцию (не копипастим логику)
     join_count = len(message.new_chat_members or [])
-    window_hours = int(s.raid_window_min)
-    close_hours = int(s.raid_close_min)
-    window_sec = window_hours * 3600
-    close_sec = close_hours * 3600
 
-    triggered = antiraid.hit(
-        chat_id=message.chat.id,
-        join_count=join_count,
-        window_sec=window_sec,
-        limit=int(s.raid_limit),
-    )
-    if not triggered:
-        return
-
-    # Закрываем чат
-    try:
-        await message.bot.set_chat_permissions(message.chat.id, DENY_ALL)
-        antiraid.set_locked(message.chat.id, close_sec)
-        text = (f"🚨 Anti-raid: chat yopildi.\n"
-            f"Limit: {s.raid_limit} / oyna: {window_hours} soat / yopish: {close_hours} soat"
-                )
-        sent = await safe_answer(
-            message,
-            text,
-            disable_web_page_preview=True
+    if int(s.raid_limit or 0) > 0 and join_count > 0:
+        await _antiraid_trigger(
+            message.bot,
+            message.chat.id,
+            s,
+            antiraid,
+            message = message,  # тут можно reply через safe_answer
+            join_count = join_count,  # пачка входящих
         )
-        if not sent:
-            print(f"[antiraid] notify failed chat={message.chat.id} limit={s.raid_limit}")
-    except Exception:
-        return
-
-    # Через N часов открываем обратно
-    async def _reopen():
-        await asyncio.sleep(close_sec)
-        try:
-            await message.bot.set_chat_permissions(message.chat.id, ALLOW_ALL)
-            sent_open_chat = await safe_answer(message, "✅ Anti-raid: chat qayta ochildi.")
-            if not sent_open_chat:
-                print(f"[antiraid open chat] notify failed chat={message.chat.id} limit={s.raid_limit}")
-        except Exception:
-            pass
-
-    asyncio.create_task(_reopen())
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), F.left_chat_member)
 async def guard_leave(message: Message, db: DB, config: Config):
@@ -637,19 +667,18 @@ async def guard_leave(message: Message, db: DB, config: Config):
             pass
 
 @router.chat_member(F.chat.type.in_({"group", "supergroup"}))
-async def guard_chat_member(update: ChatMemberUpdated, db: DB):
+async def guard_chat_member(update: ChatMemberUpdated, db: DB, antiraid: AntiRaid):
     chat_id = update.chat.id
     s = await db.get_or_create_settings(chat_id)
 
-    if not s.force_add_enabled:
-        return
-
+    # --- Anti-raid via chat_member (works even if service join messages are missing) ---
     old_status = getattr(update.old_chat_member, "status", None)
     new_status = getattr(update.new_chat_member, "status", None)
+    if old_status in ("left", "kicked") and new_status in ("member", "restricted", "administrator", "creator"):
+        if int(s.raid_limit or 0) > 0:
+            await _antiraid_trigger(update.bot, chat_id, s, antiraid, message=None, join_count=1)
 
-    if old_status not in ("left", "kicked"):
-        return
-    if new_status not in ("member", "restricted", "administrator", "creator"):
+    if not s.force_add_enabled:
         return
 
     inviter = update.from_user
