@@ -88,8 +88,8 @@ SETUP_STEPS = [
 
     "4/4 — Bot admin boshqaruvi.\n\n"
     "Guruh egasi (creator) yoki bot admin:\n"
-    "• reply + /botadmin_add — shu guruhda bot admin beradi\n"
-    "• reply + /botadmin_del — olib tashlaydi\n",
+    "• /botadmin_add (reply yoki @username) — shu guruhda bot admin beradi\n"
+    "• /botadmin_del (reply yoki @username) — olib tashlaydi\n",
 ]
 
 
@@ -192,20 +192,20 @@ HELP_ALL = (
     "• <b>/text_time &lt;soniya&gt;</b> — ⏰ Matn qachon o‘chishi.\n"
     "• <b>/text_repeat &lt;1h - bir soat | 30m - 30 daqiqa | 60s - 60 soniya&gt;</b> — ⏰ Matn takrorlanadigan vaqt. Agar 0 bo'lsa matn yuborish o'chadi\n\n"
     "• <b>/text_repeat_time &lt;soniya&gt;</b> — ⏰ Takrorlanadigan matn o'chish vaqti.\n\n"
-    "• <b>/priv</b> (reply) — ⭐ Foydalanuvchiga imtiyoz.\n"
-    "• <b>/priv_del</b> (reply) — 🛑 Foydalanuvchidan imtiyoz olib tashlaydi.\n"
-    "• <b>/delson</b> (reply) — 🗑 Hisobini 0 qilish.\n"
+    "• <b>/priv</b> (reply yoki @username) — ⭐ Foydalanuvchiga imtiyoz.\n"
+    "• <b>/priv_del</b> (reply yoki @username) — 🛑 Foydalanuvchidan imtiyoz olib tashlaydi.\n"
+    "• <b>/delson</b> (reply yoki @username) — 🗑 Hisobini 0 qilish.\n"
     "• <b>/deforce</b> — ♻️ Force-add ma’lumotlarini tozalash.\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "🧹 <b>Tozalash</b>\n"
-    "• <b>/clean</b> (reply) — 🧽 Foydalanuvchi statistikasini tozalaydi va unmute qiladi.\n"
-    "• <b>/unmute</b> (reply) — 🔓 Foydalanuvchi unmute qiladi.\n\n"
+    "• <b>/clean</b> (reply yoki @username) — 🧽 Foydalanuvchi statistikasini tozalaydi va unmute qiladi.\n"
+    "• <b>/unmute</b> (reply yoki @username) — 🔓 Foydalanuvchi unmute qiladi.\n\n"
 
     "👮 <b>BOT ADMINLARI</b>\n"
-    "• <b>/botadmin_add</b> (reply) — ➕ Bot admin qo‘shish.\n"
-    "• <b>/botadmin_del</b> (reply) — ➖ Bot adminni olib tashlash.\n"
+    "• <b>/botadmin_add</b> (reply yoki @username) — ➕ Bot admin qo‘shish.\n"
+    "• <b>/botadmin_del</b> (reply yoki @username) — ➖ Bot adminni olib tashlash.\n"
 )
 
 
