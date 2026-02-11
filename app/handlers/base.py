@@ -190,8 +190,10 @@ HELP_ALL = (
     "• <b>/add off</b> — 🛑 Majburiy qo‘shishni o‘chiradi.\n"
     "• <b>/textforce &lt;matn&gt;</b> — 📝 Ogohlantirish matni.\n"
     "• <b>/text_time &lt;soniya&gt;</b> — ⏰ Matn qachon o‘chishi.\n"
-    "• <b>/text_repeat &lt;1h - bir soat | 30m - 30 daqiqa | 60s - 60 soniya&gt;</b> — ⏰ Matn takrorlanadigan vaqt.\n\n"
+    "• <b>/text_repeat &lt;1h - bir soat | 30m - 30 daqiqa | 60s - 60 soniya&gt;</b> — ⏰ Matn takrorlanadigan vaqt. Agar 0 bo'lsa matn yuborish o'chadi\n\n"
+    "• <b>/text_repeat_time &lt;soniya&gt;</b> — ⏰ Takrorlanadigan matn o'chish vaqti.\n\n"
     "• <b>/priv</b> (reply) — ⭐ Foydalanuvchiga imtiyoz.\n"
+    "• <b>/priv_del</b> (reply) — 🛑 Foydalanuvchidan imtiyoz olib tashlaydi.\n"
     "• <b>/delson</b> (reply) — 🗑 Hisobini 0 qilish.\n"
     "• <b>/deforce</b> — ♻️ Force-add ma’lumotlarini tozalash.\n\n"
     

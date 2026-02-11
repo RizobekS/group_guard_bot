@@ -36,6 +36,72 @@ def _parse_int(arg: str, min_v: int, max_v: int) -> int | None:
         return None
     return v
 
+def _norm_arg(s: str) -> str:
+    return (s or "").strip().lower()
+
+async def _require_bot_admin(message: Message, db: DB, config: Config) -> bool:
+    if message.chat.type not in ("group", "supergroup"):
+        return False
+    if not await can_manage_bot(message, db, config):
+        await message.reply("Bu buyruq faqat bot egasi yoki bot adminlari uchun.")
+        return False
+    return True
+
+async def _toggle(message: Message, db: DB, field: str, label: str, config: Config):
+    if not await _require_bot_admin(message, db, config):
+        return
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply(f"Foydalanish: {parts[0]} yoq yoki {parts[0]} o‘chir")
+        return
+
+    arg = _norm_arg(parts[1])
+    if arg in ("yoq", "on"):
+        await db.update_settings(message.chat.id, **{field: True})
+        await message.reply(f"✅ {label}: ON")
+    elif arg in ("o‘chir", "ochir", "off"):
+        await db.update_settings(message.chat.id, **{field: False})
+        await message.reply(f"✅ {label}: OFF")
+    else:
+        await message.reply(f"Noto‘g‘ri parametr. {parts[0]} yoq yoki {parts[0]} o‘chir")
+
+async def _resolve_target_user_id(message: Message, db: DB) -> int | None:
+    """
+    1) reply -> user_id
+    2) иначе пытаемся взять @username из аргументов команды: /cmd @username
+    """
+    if message.reply_to_message and message.reply_to_message.from_user:
+        return message.reply_to_message.from_user.id
+
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        return None
+    arg = parts[1].strip()
+    if not arg:
+        return None
+
+    # поддержим и "username" и "@username"
+    if arg.startswith("@") or arg.isalnum() or "_" in arg:
+        uid = await db.get_user_id_by_username(arg)
+        if uid:
+            return uid
+        # fallback: попробуем резолвить через Telegram API (если username публичный)
+        try:
+            chat = await message.bot.get_chat(arg if arg.startswith("@") else f"@{arg}")
+            # для юзера обычно type == "private"
+            if getattr(chat, "type", None) == "private" and getattr(chat, "id", None):
+            # заодно сохраним в БД, чтобы дальше работало без API
+                try:
+                    await db.touch_user(int(chat.id), (arg or "").lstrip("@"), getattr(chat, "full_name", "") or "")
+                except Exception:
+                    pass
+                return int(chat.id)
+        except Exception:
+            return None
+    return None
+
+
 @router.message(Command("set"))
 async def cmd_set_channel(message: Message, command: CommandObject, db: DB, config: Config):
 
@@ -235,11 +301,15 @@ async def cmd_botadmin_add(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return
 
-    if not message.reply_to_message:
-        await message.reply("Reply qilib yuboring: /botadmin_add")
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /botadmin_add yoki /botadmin_add @username")
         return
 
-    uid = message.reply_to_message.from_user.id
+    exists = await db.is_chat_bot_admin(message.chat.id, uid)
+    if exists:
+        await message.reply("⚠️ Bu user allaqachon guruh uchun bot admin.")
+        return
     await db.add_chat_bot_admin(message.chat.id, uid)
     await message.reply("✅ Guruh uchun bot admin qo‘shildi.")
 
@@ -248,43 +318,12 @@ async def cmd_botadmin_del(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return
 
-    if not message.reply_to_message:
-        await message.reply("Reply qilib yuboring: /botadmin_del")
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /botadmin_del yoki /botadmin_del @username")
         return
-
-    uid = message.reply_to_message.from_user.id
     await db.remove_chat_bot_admin(message.chat.id, uid)
     await message.reply("✅ Guruh uchun bot admin olib tashlandi.")
-
-def _norm_arg(s: str) -> str:
-    return (s or "").strip().lower()
-
-async def _require_bot_admin(message: Message, db: DB, config: Config) -> bool:
-    if message.chat.type not in ("group", "supergroup"):
-        return False
-    if not await can_manage_bot(message, db, config):
-        await message.reply("Bu buyruq faqat bot egasi yoki bot adminlari uchun.")
-        return False
-    return True
-
-async def _toggle(message: Message, db: DB, field: str, label: str, config: Config):
-    if not await _require_bot_admin(message, db, config):
-        return
-
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        await message.reply(f"Foydalanish: {parts[0]} yoq yoki {parts[0]} o‘chir")
-        return
-
-    arg = _norm_arg(parts[1])
-    if arg in ("yoq", "on"):
-        await db.update_settings(message.chat.id, **{field: True})
-        await message.reply(f"✅ {label}: ON")
-    elif arg in ("o‘chir", "ochir", "off"):
-        await db.update_settings(message.chat.id, **{field: False})
-        await message.reply(f"✅ {label}: OFF")
-    else:
-        await message.reply(f"Noto‘g‘ri parametr. {parts[0]} yoq yoki {parts[0]} o‘chir")
 
 @router.message(F.text.startswith("/ssilka"))
 async def cmd_ssilka(message: Message, db: DB, config: Config):
@@ -425,7 +464,7 @@ async def cmd_yomondel(message: Message, db: DB, config: Config):
         return
     word = _normalize_for_badwords(parts[1])
     await db.remove_bad_word(message.chat.id, word)
-    await message.reply(f"✅ O‘chirildi: <code>{word}</code>")
+    await message.reply(f"✅ O‘chirildi: '{word}'")
 
 @router.message(F.text == "/yomonlist")
 async def cmd_yomonlist(message: Message, db: DB, config: Config):
@@ -547,7 +586,7 @@ async def cmd_text_repeat(message: Message, command: CommandObject, db: DB, conf
 
     # start (or restart) task
     text_repeater.start(message.chat.id)
-    await message.reply(f"✅ text_repeat yoqildi: har {sec} sekundda.\nXabar /text_time bo‘yicha o‘chadi.")
+    await message.reply(f"✅ text_repeat yoqildi: har {sec} sekundda.")
 
 @router.message(Command("textforce"))
 async def cmd_textforce(message: Message, command: CommandObject, db: DB, config: Config):
@@ -570,28 +609,67 @@ async def cmd_texttime(message,command: CommandObject, db: DB, config: Config):
     await db.update_settings(message.chat.id, force_text_delete_sec=command.args)
     await message.reply("Force xabar vaqti saqlandi.")
 
+@router.message(Command("text_repeat_time"))
+async def cmd_text_repeat_time(message: Message, command: CommandObject, db: DB, config: Config):
+    """
+    /text_repeat_time 10   (seconds)
+    /text_repeat_time 0    (OFF)
+    """
+    if not await can_manage_bot(message, db, config):
+        return
+    if not command.args or not command.args.strip().isdigit():
+        await message.reply("Foydalanish: /text_repeat_time <soniya>\nMasalan: /text_repeat_time 30 (yoki 0 - OFF)")
+        return
+    sec = int(command.args.strip())
+    if sec < 0 or sec > 86400:
+        await message.reply("Soniya 0..86400 oralig‘ida bo‘lsin.")
+        return
+    await db.update_settings(message.chat.id, force_text_repeat_delete_sec=sec)
+    await message.reply("✅ Repeat xabarni o‘chirish vaqti saqlandi.")
 
-@router.message(F.text.startswith("/priv"))
+
+@router.message(Command("priv"))
 async def cmd_priv(message, db, config: Config):
     if not await can_manage_bot(message, db, config):
         return
-    if not message.reply_to_message:
-        await message.reply("Reply qiling.")
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /priv yoki /priv @username")
         return
-    await db.add_force_priv(message.chat.id, message.reply_to_message.from_user.id)
-    await message.reply("User priv qo‘shildi.")
+    exists = await db.is_force_priv(message.chat.id, uid)
+
+    if exists:
+        await message.reply("⚠️ Bu user allaqachon priv.")
+        return
+
+    await db.add_force_priv(message.chat.id, uid)
+    await message.reply("✅ User priv qo‘shildi.")
+
+@router.message(Command("priv_del"))
+async def cmd_priv_del(message, db, config: Config):
+    if not await can_manage_bot(message, db, config):
+        return
+
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /priv_del yoki /priv_del @username")
+        return
+    await db.remove_force_priv(message.chat.id, uid)
+    await message.reply("✅ User priv o‘chirildi.")
 
 
-@router.message(F.text.startswith("/delson"))
+@router.message(Command("delson"))
 async def cmd_delson(message, db, config: Config):
     if not await can_manage_bot(message, db, config):
         return
-    if not message.reply_to_message:
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /delson yoki /delson @username")
         return
-    await db.reset_force_user(message.chat.id, message.reply_to_message.from_user.id)
+    await db.reset_force_user(message.chat.id, uid)
     await message.reply("Hisob tozalandi.")
 
-@router.message(F.text == "/clean")
+@router.message(Command("clean"))
 async def cmd_clean(message: Message, db: DB, antiflood, config: Config):
     # Только владелец/бот-админ
     if not await can_manage_bot(message, db, config):
@@ -599,12 +677,10 @@ async def cmd_clean(message: Message, db: DB, antiflood, config: Config):
     if message.chat.type not in ("group", "supergroup"):
         return
 
-    # ТЗ: reply qilingan user statistikasi 0
-    if not message.reply_to_message or not message.reply_to_message.from_user:
-        await message.reply("Foydalanish: reply qilib /clean")
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /clean yoki /clean @username")
         return
-
-    uid = message.reply_to_message.from_user.id
     await db.clean_user_stats(message.chat.id, uid)
     await unmute_user(message.bot, message.chat.id, uid)
 
@@ -617,7 +693,7 @@ async def cmd_clean(message: Message, db: DB, antiflood, config: Config):
     await message.reply("✅ User statistikasi tozalandi.")
 
 
-@router.message(F.text == "/deforce")
+@router.message(Command("deforce"))
 async def cmd_deforce(message: Message, db: DB, config: Config):
     if not await can_manage_bot(message, db, config):
         return
@@ -636,11 +712,10 @@ async def cmd_unmute(message: Message, db: DB, config: Config):
         return
     if message.chat.type not in ("group", "supergroup"):
         return
-    if not message.reply_to_message or not message.reply_to_message.from_user:
-        await message.reply("Foydalanish: reply qilib /unmute")
+    uid = await _resolve_target_user_id(message, db)
+    if not uid:
+        await message.reply("Foydalanish: reply qilib /unmute yoki /unmute @username")
         return
-
-    uid = message.reply_to_message.from_user.id
     ok = await unmute_user(message.bot, message.chat.id, uid)
     if ok:
         await message.reply("✅ User blokdan chiqarildi.")

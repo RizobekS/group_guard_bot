@@ -46,6 +46,7 @@ class ChatSettings(Base):
     force_text: Mapped[str] = mapped_column(String(500), default="Guruhda yozish uchun odam qo‘shing.")
     force_text_delete_sec: Mapped[int] = mapped_column(Integer, default=30)  # /text_time
     force_text_repeat_sec: Mapped[int] = mapped_column(Integer, default=0)  # /text_repeat
+    force_text_repeat_delete_sec: Mapped[int] = mapped_column(Integer, default=0)  # /text_repeat_time
 
     linked_channel: Mapped[str] = mapped_column(String(255), default="")  # /set -> @channelusername
 

@@ -124,10 +124,33 @@ async def unmute_user(bot, chat_id: int, user_id: int) -> bool:
         return False
 
 def is_channel_post(message: Message) -> bool:
-    # sender_chat появляется у постов от имени канала/чата
+    # 1) Сообщение отправлено "от имени" (sender_chat)
     if message.sender_chat is not None:
+        try:
+            if getattr(message.sender_chat, "type", None) == "channel":
+                return True
+        except Exception:
+            # если тип недоступен, считаем это "пост от имени"
+
+            return True
+
+      # 2) Форварды: старые поля
+
+    if message.forward_from_chat is not None and getattr(message.forward_from_chat, "type", None) == "channel":
+
         return True
-    # переслано из канала
-    if message.forward_from_chat is not None and message.forward_from_chat.type == "channel":
+
+      # 3) Форварды: новые поля Bot API (forward_origin)
+      # aiogram v3 кладёт это в message.forward_origin (если есть)
+
+    fo = getattr(message, "forward_origin", None)
+    if fo is not None:
+        ch = getattr(fo, "chat", None)
+        if ch is not None and getattr(ch, "type", None) == "channel":
+            return True
+
+      # 4) Автофорвард из канала (канал -> обсуждение)
+    if getattr(message, "is_automatic_forward", False):
         return True
+
     return False

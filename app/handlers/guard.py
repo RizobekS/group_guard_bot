@@ -38,6 +38,7 @@ DENY_ALL = ChatPermissions(
 )
 
 _last_touch: dict[int, float] = {}
+_last_user_touch: dict[int, float] = {}
 _media_cache: dict[tuple[int, str], dict] = {}
 _album_warned: dict[tuple[int, int, str, str], float] = {}
 
@@ -295,9 +296,35 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     if not user:
         return
 
+    # сохраним username/ФИО, чтобы команды могли работать по @username,
+    # даже если сообщение уже удалено.
+    now = time.monotonic()
+    last_u = _last_user_touch.get(user.id, 0.0)
+    if now - last_u >= 300.0:  # раз в 5 минут на юзера
+        _last_user_touch[user.id] = now
+        try:
+            await db.touch_user(user.id, user.username or "", user.full_name or "")
+        except Exception:
+            pass
+
     s = await db.get_or_create_settings(chat_id)
     text = _get_text(message)
     _remember_media(message)
+
+    # Команды:
+    # - менеджерам/админам пропускаем (чтобы /priv @user не улетал как "ссылка")
+    # - обычным юзерам проверяем "хвост" после команды (чтобы не обходили рекламу/мат)
+    if message.text and message.text.startswith("/"):
+        is_manager = await can_manage_chat(
+            message.bot, chat_id, user.id, user.username, db, config
+        )
+        if is_manager or tg_admin:
+            return
+        # обычный юзер: проверяем то, что после "/команда"
+        parts = text.split(maxsplit=1)
+        text = parts[1] if len(parts) > 1 else ""
+        if not text.strip():
+            return
 
     # Force add
     if s.force_add_enabled and not tg_admin:
@@ -425,6 +452,27 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
     # 1) Канал-посты
     if s.block_channel_posts and is_channel_post(message):
+        # ✅ Исключение: если это "прикреплённый" канал из /set @kanal, то его посты не удаляем.
+        linked = (s.linked_channel or "").lstrip("@").lower().strip()
+        if linked:
+            # 1) пост от имени канала
+            if message.sender_chat and getattr(message.sender_chat, "type", None) == "channel":
+                ch_u = (getattr(message.sender_chat, "username", "") or "").lower()
+                if ch_u and ch_u == linked:
+                    return
+            # 2) форвард из канала (новое/старое поле)
+            if message.forward_from_chat and getattr(message.forward_from_chat, "type", None) == "channel":
+                ch_u = (getattr(message.forward_from_chat, "username", "") or "").lower()
+                if ch_u and ch_u == linked:
+                    return
+            fo = getattr(message, "forward_origin", None)
+            if fo is not None:
+                ch = getattr(fo, "chat", None)
+                if ch is not None and getattr(ch, "type", None) == "channel":
+                    ch_u = (getattr(ch, "username", "") or "").lower()
+                    if ch_u and ch_u == linked:
+                        return
+
         await _handle_violation(
             message, db, config,
             rule="channel",

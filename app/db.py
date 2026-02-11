@@ -57,6 +57,15 @@ class DB:
                 # column already exists or SQLite limitation -> ignore
                 pass
 
+            # ---- auto-migrate: add missing column force_text_repeat_delete_sec ----
+            try:
+                await conn.execute(
+                   text(
+                        "ALTER TABLE chat_settings ADD COLUMN force_text_repeat_delete_sec INTEGER NOT NULL DEFAULT 0;")
+                )
+            except Exception:
+                pass
+
     async def touch_chat(self, chat_id: int, title: str = "") -> None:
         async with self.Session() as session:
             res = await session.execute(select(BotChat).where(BotChat.chat_id == chat_id))
@@ -97,18 +106,31 @@ class DB:
             if not obj:
                 obj = BotUser(
                     user_id=user_id,
-                    username=(username or "")[:64],
+                    username=(username or "").lstrip("@").lower()[:64],
                     full_name=(full_name or "")[:255],
                     is_active=True,
                     last_seen_at=now,
                 )
                 session.add(obj)
             else:
-                obj.username = (username or obj.username or "")[:64]
+                obj.username = (username or obj.username or "").lstrip("@").lower()[:64]
                 obj.full_name = (full_name or obj.full_name or "")[:255]
                 obj.is_active = True
                 obj.last_seen_at = now
             await session.commit()
+
+    async def get_user_id_by_username(self, username: str) -> int | None:
+        """
+        Найти user_id по username, который бот уже видел.
+        Username хранится без '@' и в lower().
+        """
+        u = (username or "").strip().lstrip("@").lower()
+        if not u:
+            return None
+        async with self.Session() as session:
+            res = await session.execute(select(BotUser.user_id).where(BotUser.username == u).limit(1))
+            row = res.first()
+            return int(row[0]) if row else None
 
     async def set_user_active(self, user_id: int, active: bool) -> None:
         async with self.Session() as session:
@@ -383,7 +405,14 @@ class DB:
 
     async def add_force_priv(self, chat_id: int, user_id: int):
         async with self.Session() as s:
-            s.add(ForceAddPriv(chat_id=chat_id, user_id=user_id))
+            stmt = (
+                insert(ForceAddPriv)
+                .values(chat_id=chat_id, user_id=user_id)
+                .on_conflict_do_nothing(
+                    index_elements=["chat_id", "user_id"]
+                )
+            )
+            await s.execute(stmt)
             await s.commit()
 
     async def remove_force_priv(self, chat_id: int, user_id: int):

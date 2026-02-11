@@ -80,7 +80,7 @@ class TextRepeater:
                 # send
                 try:
                     msg = await self.bot.send_message(chat_id, text_value)
-                    delete_sec = int(getattr(s, "force_text_delete_sec", 0) or 0)
+                    delete_sec = int(getattr(s, "force_text_repeat_delete_sec", 0) or 0)
                     if delete_sec > 0:
                         asyncio.create_task(self._delete_later(chat_id, msg.message_id, delete_sec))
                 except TelegramBadRequest:
