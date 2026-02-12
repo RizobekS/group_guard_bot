@@ -102,8 +102,8 @@ HELP_ALL = (
 
     "⚙️ <b>Asosiy buyruqlar</b>\n\n"
     
-    "<b>/holat</b> — Barcha buyruqlar ro‘yxati\n"
-    "<b>/help</b> — Hozirgi faol sozlamalar (ON/OFF)\n\n"
+    "/holat — Barcha buyruqlar ro‘yxati\n"
+    "/help — Hozirgi faol sozlamalar (ON/OFF)\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -111,68 +111,67 @@ HELP_ALL = (
     
     "🔗 <b>Havola</b>\n\n"
     
-    "<b>/ssilka yoq</b> — Havolani bloklaydi\n"
-    "<b>/ssilka o‘chir</b> — Ruxsat beradi\n\n"
+    "/ssilka yoq — Havolani bloklaydi\n"
+    "/ssilka o‘chir — Ruxsat beradi\n\n"
     
     "📢 <b>Reklama</b>\n\n"
 
-    "<b>/reklama yoq</b> — Reklama va spamni o‘chiradi\n"
-    "<b>/reklama o‘chir</b> — Ruxsat beradi\n"
-    "<b>/rek_limit &lt;son&gt;</b> — Reklama limitini belgilaydi\n\n"
+    "/reklama yoq — Reklama va spamni o‘chiradi\n"
+    "/reklama o‘chir — Ruxsat beradi\n"
+    "/rek_limit &lt;son&gt; — Reklama limitini belgilaydi\n\n"
     
     "🈲 <b>Arab harfi</b>\n\n"
 
-    "<b>/arab yoq</b> — Arab harfli xabarni o‘chiradi\n"
-    "<b>/arab o‘chir</b> — Ruxsat beradi\n\n"
+    "/arab yoq — Arab harfli xabarni o‘chiradi\n"
+    "/arab o‘chir — Ruxsat beradi\n\n"
     
     "🤬 <b> So‘kinish</b>\n\n"
 
-    "<b>/sokin yoq</b> — So‘kinishni o‘chiradi\n"
-    "<b>/sokin o‘chir</b> — Ruxsat beradi\n\n"
+    "/sokin yoq — So‘kinishni o‘chiradi\n"
+    "/sokin o‘chir — Ruxsat beradi\n\n"
     
     "🈲 <b>YOMON SO‘ZLAR (BADWORDS)</b>\n\n"
     
-    "<b>/yomonqosh &lt;so‘z&gt;</b> — Yomon so‘z qo‘shadi\n"
-    "<b>/yomondel &lt;so‘z&gt;</b> — So‘zni o‘chiradi.\n"
-    "<b>/yomonlist</b> — Barcha yomon so‘zlar ro‘yxatini ko‘rsatadi\n\n"
+    "/yomonqosh &lt;so‘z&gt; — Yomon so‘z qo‘shadi\n"
+    "/yomondel &lt;so‘z&gt; — So‘zni o‘chiradi.\n"
+    "/yomonlist — Barcha yomon so‘zlar ro‘yxatini ko‘rsatadi\n\n"
     
     "📛 <b>Kanal postlari</b>\n\n"
 
-    "<b>/kanalpost yoq</b> — Kanal nomidan yuborilgan postlarni o‘chiradi.\n"
-    "<b>/kanalpost o‘chir</b> — Kanal postlariga ruxsat beradi.\n\n"
+    "/kanalpost yoq — Kanal nomidan yuborilgan postlarni o‘chiradi.\n"
+    "/kanalpost o‘chir — Kanal postlariga ruxsat beradi.\n\n"
     
     "👻 <b>Xizmat xabarlari</b>\n"
-
-    "<b>/xizmat yoq</b> — Kirish/Chiqish xabarlarni yashiradi.\n"
-    "<b>/xizmat o‘chir</b> — Kirish/Chiqish xabarlarni ko‘rsatadi.\n\n"
+    "/xizmat yoq — Kirish/Chiqish xabarlarni yashiradi.\n"
+    "/xizmat o‘chir — Kirish/Chiqish xabarlarni ko‘rsatadi.\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
     
     "🌊 <b>ANTI-FLOOD (KO‘P XABAR)</b>\n"
 
-    "<b>/antiflood yoq</b> — Ketma-ket yozishni cheklaydi\n"
-    "<b>/antiflood o‘chir</b> — Cheklovni o‘chiradi\n"
-    "<b>/setflood 5</b> — Ruxsat etilgan xabar soni\n"
-    "<b>/setfloodtime 7</b> — Hisoblash vaqti (soniya)\n\n"
+    "/antiflood yoq — Ketma-ket yozishni cheklaydi\n"
+    "/antiflood o‘chir — Cheklovni o‘chiradi\n"
+    "/setflood 5 — Ruxsat etilgan xabar soni\n"
+    "/setfloodtime 7 — Hisoblash vaqti (soniya)\n\n"
     
     "➡️ 7 soniyada 5 tadan ko‘p xabar yozsa — MUTE 🚫\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "♻️ <b>ANTI-SAME (BIR XIL XABAR)</b>\n"
-    "<b>/antisame yoq</b> — Bir xil xabarni bloklaydi\n"
-    "<b>/antisame o‘chir</b> — Ruxsat beradi.\n"
-    "<b>/settime 2</b> — 2 minut ichida takrorlansa blok\n\n"
+    "/antisame yoq — Bir xil xabarni bloklaydi\n"
+    "/antisame o‘chir — Ruxsat beradi.\n"
+    "/settime 2 — 2 minut ichida takrorlansa blok\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "🧯 <b>ANTI-RAID (OMMAVIY KIRISH)</b>\n\n"
     
-    "<b>/limit &lt;son&gt;</b> —  Kiruvchilar limiti\n"
-    "<b>/oyna &lt;soat&gt;</b> —  Vaqt oralig‘i (soat)\n"
-    "<b>/yopish &lt;soat&gt;</b> — Yopish muddati (soat)\n"
-    "<b>/limit 0</b> — O‘chiradi\n"
-    "<b>/antiraidpanel</b> — Tugmali panel\n\n"
+    "/limit &lt;son&gt; —  Kiruvchilar limiti\n"
+    "/oyna &lt;soat&gt; —  Vaqt oralig‘i (soat)\n"
+    "/yopish &lt;soat&gt; — Yopish muddati (soat)\n"
+    "/limit 0 — O‘chiradi\n"
+    "/antiraidpanel — Tugmali panel\n\n"
     
     "➡️ Limit oshsa — guruh vaqtincha yopiladi 🚫\n\n"
     
@@ -186,8 +185,8 @@ HELP_ALL = (
     "━━━━━━━━━━━━━━━━━━\n\n"        
 
     "📢 <b>MAJBURIY KANAL</b>\n\n"
-    "<b>/set @kanal</b> — Majburiy obunani yoqadi\n"
-    "<b>/unlink</b> — Majburiy obunani o‘chiradi\n\n"
+    "/set @kanal — Majburiy obunani yoqadi\n"
+    "/unlink — Majburiy obunani o‘chiradi\n\n"
     
     "➡️ Kanalga obuna bo‘lmagan foydalanuvchi yozolmaydi 🚫\n\n"
     
@@ -197,35 +196,35 @@ HELP_ALL = (
     
     "🔹 <b>Asosiy sozlama</b>\n\n"
     
-    "<b>/add 3</b> — 3 ta odam qo‘shsa yozadi\n"
-    "<b>/add off</b> — Majburiy qo‘shishni o‘chiradi\n"
+    "/add 3 — 3 ta odam qo‘shsa yozadi\n"
+    "/add off — Majburiy qo‘shishni o‘chiradi\n"
     "━━━\n"
     "🔹 <b>Ogohlantirish matni</b>\n\n"
     
-    "<b>/textforce &lt;matn&gt;</b> — Ogohlantirish matni.\n"
-    "<b>/text_time 30</b> — Matn o‘chish vaqti (soniya)\n"
-    "<b>/text_repeat 1h</b> — Takrorlash vaqti 1h/30m/60s\n"
-    "<b>/text_repeat_time &lt;soniya&gt;</b> — Takrorlanadigan matn o'chish vaqti.\n"
-    "<b>/text_repeat 0</b> — Takrorlashni o‘chiradi\n"
+    "/textforce &lt;matn&gt; — Ogohlantirish matni.\n"
+    "/text_time 30 — Matn o‘chish vaqti (soniya)\n"
+    "/text_repeat 1h — Takrorlash vaqti 1h/30m/60s\n"
+    "/text_repeat_time &lt;soniya&gt; — Takrorlash matnni o'chish vaqti.\n"
+    "/text_repeat 0 — Takrorlashni o‘chiradi\n"
     "━━━\n"
     "🔹 <b> Foydalanuvchi boshqaruvi</b>\n\n"
     
-    "<b>/priv</b> — Foydalanuvchiga imtiyoz beradi\n"
-    "<b>/priv_del</b> — Imtiyozni olib tashlaydi\n"
-    "<b>/delson</b> — Qo‘shgan odam sonini 0 qiladi\n"
-    "<b>/deforce</b> — Force add ma’lumotlarini tozalaydi\n\n"
+    "/priv — Foydalanuvchiga imtiyoz beradi\n"
+    "/priv_del — Imtiyozni olib tashlaydi\n"
+    "/delson — Qo‘shgan odam sonini 0 qiladi\n"
+    "/deforce — Force add ma’lumotlarini tozalaydi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "🧹 <b>Tozalash</b>\n"
-    "<b>/clean</b> —  Statistikani tozalaydi + unmute qiladi\n"
-    "<b>/unmute</b> — Faqat muteni ochadi\n\n"
+    "/clean —  Statistikani tozalaydi + unmute qiladi\n"
+    "/unmute — Faqat muteni ochadi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "👮 <b>BOT ADMIN</b>\n\n"
-    "<b>/botadmin_add</b> — Bot admin qiladi\n"
-    "<b>/botadmin_del</b> — Bot adminni olib tashlaydi\n\n"
+    "/botadmin_add — Bot admin qiladi\n"
+    "/botadmin_del — Bot adminni olib tashlaydi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
