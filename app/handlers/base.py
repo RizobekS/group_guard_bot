@@ -118,7 +118,7 @@ HELP_ALL = (
 
     "/reklama yoq — Reklama va spamni o‘chiradi\n"
     "/reklama o‘chir — Ruxsat beradi\n"
-    "/rek_limit &lt;son&gt; — Reklama limitini belgilaydi\n\n"
+    "/rek_limit son — Reklama limitini belgilaydi\n\n"
     
     "🈲 <b>Arab harfi</b>\n\n"
 
@@ -167,9 +167,9 @@ HELP_ALL = (
 
     "🧯 <b>ANTI-RAID (OMMAVIY KIRISH)</b>\n\n"
     
-    "/limit &lt;son&gt; —  Kiruvchilar limiti\n"
-    "/oyna &lt;soat&gt; —  Vaqt oralig‘i (soat)\n"
-    "/yopish &lt;soat&gt; — Yopish muddati (soat)\n"
+    "/limit son —  Kiruvchilar limiti\n"
+    "/oyna soat —  Vaqt oralig‘i (soat)\n"
+    "/yopish soat — Yopish muddati (soat)\n"
     "/limit 0 — O‘chiradi\n"
     "/antiraidpanel — Tugmali panel\n\n"
     
@@ -201,10 +201,10 @@ HELP_ALL = (
     "━━━\n"
     "🔹 <b>Ogohlantirish matni</b>\n\n"
     
-    "/textforce &lt;matn&gt; — Ogohlantirish matni.\n"
+    "/textforce matn — Ogohlantirish matni.\n"
     "/text_time 30 — Matn o‘chish vaqti (soniya)\n"
     "/text_repeat 1h — Takrorlash vaqti 1h/30m/60s\n"
-    "/text_repeat_time &lt;soniya&gt; — Takrorlash matnni o'chish vaqti.\n"
+    "/text_repeat_time soniya — Takrorlash matnni o'chish vaqti.\n"
     "/text_repeat 0 — Takrorlashni o‘chiradi\n"
     "━━━\n"
     "🔹 <b> Foydalanuvchi boshqaruvi</b>\n\n"
