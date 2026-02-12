@@ -94,118 +94,144 @@ SETUP_STEPS = [
 
 
 HELP_ALL = (
-    "📘 <b>YORDAM — BOT BUYRUQLARI</b>\n\n"
+    "📘 <b>GURUH HIMOYA BOT | ADMIN PANEL</b>\n\n"
     
-    "👋 Ushbu bot guruhni tartibga solish, spam va bezorilikdan himoya qilish uchun xizmat qiladi.\n"
-    "Pastdagi buyruqlar orqali botni boshqarishingiz mumkin.\n\n"
+    "👋  <b>Guruh xavfsizligi uchun yaratilgan professional avtomatik himoya tizimi.</b>\n"
+    "⚡️ 24/7 faol nazorat va tezkor himoya.\n"
+    "🔐 To‘liq boshqaruv adminlar qo‘lida.\n\n"
 
-    "⚙️ <b>Asosiy buyruqlar</b>\n"
-    "• <b>/holat</b> — 📖 guruhdagi bot sozlamalari (qaysi bloklar ON/OFF).\n"
-    "• <b>/help</b> — 🔍 Bot hozir qaysi sozlamalarda ishlayotganini ko‘rsatadi.\n\n"
+    "⚙️ <b>Asosiy buyruqlar</b>\n\n"
+    
+    "<b>/holat</b> — Barcha buyruqlar ro‘yxati\n"
+    "<b>/help</b> — Hozirgi faol sozlamalar (ON/OFF)\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
-    "🔒 <b>Xabarlarni bloklash (Filtrlar)</b>\n"
-    "• <b>/ssilka yoq</b> — 🔗 Havola yuborishni taqiqlaydi.\n"
-    "• <b>/ssilka o‘chir</b> — 🔓 Havolalarga ruxsat beradi.\n\n"
-
-    "• <b>/reklama yoq</b> — ❌ Reklama va spam xabarlarni o‘chiradi.\n"
-    "• <b>/reklama o‘chir</b> — 📢 Reklama blokini o‘chiradi.\n"
-    "• <b>/rek_limit &lt;son&gt;</b> — 🚫 Reklama limitini o‘zgartirish.\n\n"
+    "🔒 <b>XABAR FILTRLARI</b>\n\n"
     
-    "<b>Arab harflari</b>\n"
-
-    "• <b>/arab yoq</b> — 🈲 Arab harflari bor xabarlarni o‘chiradi.\n"
-    "• <b>/arab o‘chir</b> — 🆗 Arab harflariga ruxsat beradi.\n\n"
+    "🔗 <b>Havola</b>\n\n"
     
-    "<b>So‘kinish xabarlari</b>\n"
-
-    "• <b>/sokin yoq</b> — 🤬 So‘kinish yozilgan xabarlarni o‘chiradi.\n"
-    "• <b>/sokin o‘chir</b> — 🙂 So‘kinishga ruxsat beradi.\n\n"
+    "<b>/ssilka yoq</b> — Havolani bloklaydi\n"
+    "<b>/ssilka o‘chir</b> — Ruxsat beradi\n\n"
     
-    "<b>Kanal postlari</b>\n"
+    "📢 <b>Reklama</b>\n\n"
 
-    "• <b>/kanalpost yoq</b> — 📛 Kanal nomidan yuborilgan postlarni o‘chiradi.\n"
-    "• <b>/kanalpost o‘chir</b> — 📬 Kanal postlariga ruxsat beradi.\n\n"
+    "<b>/reklama yoq</b> — Reklama va spamni o‘chiradi\n"
+    "<b>/reklama o‘chir</b> — Ruxsat beradi\n"
+    "<b>/rek_limit &lt;son&gt;</b> — Reklama limitini belgilaydi\n\n"
     
-    "<b>Xizmat xabarlari</b>\n"
+    "🈲 <b>Arab harfi</b>\n\n"
 
-    "• <b>/xizmat yoq</b> — 👻 Kim kirdi / chiqdi degan xabarlarni yashiradi.\n"
-    "• <b>/xizmat o‘chir</b> — 👀 Kim kirdi / chiqdi xabarlarni ko‘rsatadi.\n\n"
+    "<b>/arab yoq</b> — Arab harfli xabarni o‘chiradi\n"
+    "<b>/arab o‘chir</b> — Ruxsat beradi\n\n"
+    
+    "🤬 <b> So‘kinish</b>\n\n"
+
+    "<b>/sokin yoq</b> — So‘kinishni o‘chiradi\n"
+    "<b>/sokin o‘chir</b> — Ruxsat beradi\n\n"
+    
+    "🈲 <b>YOMON SO‘ZLAR (BADWORDS)</b>\n\n"
+    
+    "<b>/yomonqosh &lt;so‘z&gt;</b> — Yomon so‘z qo‘shadi\n"
+    "<b>/yomondel &lt;so‘z&gt;</b> — So‘zni o‘chiradi.\n"
+    "<b>/yomonlist</b> — Barcha yomon so‘zlar ro‘yxatini ko‘rsatadi\n\n"
+    
+    "📛 <b>Kanal postlari</b>\n\n"
+
+    "<b>/kanalpost yoq</b> — Kanal nomidan yuborilgan postlarni o‘chiradi.\n"
+    "<b>/kanalpost o‘chir</b> — Kanal postlariga ruxsat beradi.\n\n"
+    
+    "👻 <b>Xizmat xabarlari</b>\n"
+
+    "<b>/xizmat yoq</b> — Kirish/Chiqish xabarlarni yashiradi.\n"
+    "<b>/xizmat o‘chir</b> — Kirish/Chiqish xabarlarni ko‘rsatadi.\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
     
-    "<b>🈲 So‘kinish so‘zlari (BadWords)</b>\n"
+    "🌊 <b>ANTI-FLOOD (KO‘P XABAR)</b>\n"
 
-    "• <b>/yomonqosh &lt;so‘z&gt;</b> — ➕ Yomon so‘z qo‘shish.\n"
-    "• <b>/yomondel &lt;so‘z&gt;</b> — ➖ So‘zni o‘chirish.\n"
-    "• <b>/yomonlist</b> — 📄 Barcha yomon so‘zlar ro‘yxati.\n\n"
+    "<b>/antiflood yoq</b> — Ketma-ket yozishni cheklaydi\n"
+    "<b>/antiflood o‘chir</b> — Cheklovni o‘chiradi\n"
+    "<b>/setflood 5</b> — Ruxsat etilgan xabar soni\n"
+    "<b>/setfloodtime 7</b> — Hisoblash vaqti (soniya)\n\n"
     
-    "<b>🌊 ANTI-FLOOD (KO‘P XABAR)</b>\n"
-
-    "• <b>/antiflood yoq</b> — 🚫 Ketma-ket yozishni cheklaydi.\n"
-    "• <b>/antiflood o‘chir</b> — ✅ Cheklovni o‘chiradi.\n\n"
-    "• <b>/setflood &lt;son&gt;</b> — 📊 Nechta xabar yozsa cheklanadi\n"
-    "• <b>/setfloodtime &lt;soniya&gt;</b> — ⏱ Necha soniya ichida sanaydi\n\n"
-    
-    "<b>📌 Misol:</b>\n"
-    "/setflood 5\n"
-    "/setfloodtime 7\n\n"
-    
-    "➡️ 7 soniyada 5 tadan ko‘p xabar — blok 🚫\n\n"
+    "➡️ 7 soniyada 5 tadan ko‘p xabar yozsa — MUTE 🚫\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "♻️ <b>ANTI-SAME (BIR XIL XABAR)</b>\n"
-    "• <b>/antisame yoq</b> — 🔁 Bir xil xabarni bloklaydi.\n"
-    "• <b>/antisame o‘chir</b> — 🔓 Ruxsat beradi.\n"
-    "• <b>/settime &lt;min&gt;</b> — ⏳ Qancha vaqtda takrorlansa blok.\n\n"
+    "<b>/antisame yoq</b> — Bir xil xabarni bloklaydi\n"
+    "<b>/antisame o‘chir</b> — Ruxsat beradi.\n"
+    "<b>/settime 2</b> — 2 minut ichida takrorlansa blok\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
-    "🧯 <b>ANTI-RAID (OMMAVIY KIRISH)</b>\n"
-    "• <b>/limit &lt;son&gt;</b> — 🚪 Nechta odam kirsa xavf deb hisoblansin.\n"
-    "• <b>/oyna &lt;soat&gt;</b> — ⏱ Qaysi vaqt ichida sanaydi.\n"
-    "• <b>/yopish &lt;soat&gt;</b> — 🔒 Guruhni vaqtincha yopadi.\n"
-    "• <b>/limit 0</b> bo'lganda — ANTI-RAID off.\n"
-    "• <b>/antiraidpanel</b> — 🎛 Tugmali boshqaruv paneli.\n\n"
+    "🧯 <b>ANTI-RAID (OMMAVIY KIRISH)</b>\n\n"
     
-    "<b>📌 Misol sozlama:</b>\n"
-    "/limit 10\n"
+    "<b>/limit &lt;son&gt;</b> —  Kiruvchilar limiti\n"
+    "<b>/oyna &lt;soat&gt;</b> —  Vaqt oralig‘i (soat)\n"
+    "<b>/yopish &lt;soat&gt;</b> — Yopish muddati (soat)\n"
+    "<b>/limit 0</b> — O‘chiradi\n"
+    "<b>/antiraidpanel</b> — Tugmali panel\n\n"
+    
+    "➡️ Limit oshsa — guruh vaqtincha yopiladi 🚫\n\n"
+    
+    "<b>📌 Misol:</b>\n"
+    "/limit 100\n"
     "/oyna 1\n"
-    "/yopish 5\n\n"
+    "/yopish 2\n\n"
     
-    "➡️ 1 minutda 10 ta odam kirsa — guruh 5 minut yopiladi 🚫\n\n"
+    "➡️ 1 soatda 10 ta odam kirsa — guruh 2 soatga yopiladi 🚫\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"        
 
-    "📢 <b>MAJBURIY KANAL OBUNA</b>\n\n"
-    "• <b>/set @kanal</b> — 📌 Kanalga obuna bo‘lmaguncha yozishga ruxsat bermaydi.\n"
-    "• <b>/unlink</b> — ❌ Majburiy obunani o‘chiradi.\n\n"
+    "📢 <b>MAJBURIY KANAL</b>\n\n"
+    "<b>/set @kanal</b> — Majburiy obunani yoqadi\n"
+    "<b>/unlink</b> — Majburiy obunani o‘chiradi\n\n"
+    
+    "➡️ Kanalga obuna bo‘lmagan foydalanuvchi yozolmaydi 🚫\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n" 
 
-    "👥 <b>MAJBURIY ODAM QO‘SHISH (FORCE ADD)</b>\n"
-    "• <b>/add &lt;son&gt;</b> — ➕ Nechta odam qo‘shish shartligini belgilaydi.\n"
-    "• <b>/add off</b> — 🛑 Majburiy qo‘shishni o‘chiradi.\n"
-    "• <b>/textforce &lt;matn&gt;</b> — 📝 Ogohlantirish matni.\n"
-    "• <b>/text_time &lt;soniya&gt;</b> — ⏰ Matn qachon o‘chishi.\n"
-    "• <b>/text_repeat &lt;1h - bir soat | 30m - 30 daqiqa | 60s - 60 soniya&gt;</b> — ⏰ Matn takrorlanadigan vaqt. Agar 0 bo'lsa matn yuborish o'chadi\n\n"
-    "• <b>/text_repeat_time &lt;soniya&gt;</b> — ⏰ Takrorlanadigan matn o'chish vaqti.\n\n"
-    "• <b>/priv</b> (reply yoki @username) — ⭐ Foydalanuvchiga imtiyoz.\n"
-    "• <b>/priv_del</b> (reply yoki @username) — 🛑 Foydalanuvchidan imtiyoz olib tashlaydi.\n"
-    "• <b>/delson</b> (reply yoki @username) — 🗑 Hisobini 0 qilish.\n"
-    "• <b>/deforce</b> — ♻️ Force-add ma’lumotlarini tozalash.\n\n"
+    "👥 <b>FORCE ADD MAJBURIY ODAM QO‘SHISH</b>\n\n"
+    
+    "🔹 <b>Asosiy sozlama</b>\n\n"
+    
+    "<b>/add 3</b> — 3 ta odam qo‘shsa yozadi\n"
+    "<b>/add off</b> — Majburiy qo‘shishni o‘chiradi\n"
+    "━━━\n"
+    "🔹 <b>Ogohlantirish matni</b>\n\n"
+    
+    "<b>/textforce &lt;matn&gt;</b> — Ogohlantirish matni.\n"
+    "<b>/text_time 30</b> — Matn o‘chish vaqti (soniya)\n"
+    "<b>/text_repeat 1h</b> — Takrorlash vaqti 1h/30m/60s\n"
+    "<b>/text_repeat_time &lt;soniya&gt;</b> — Takrorlanadigan matn o'chish vaqti.\n"
+    "<b>/text_repeat 0</b> — Takrorlashni o‘chiradi\n"
+    "━━━\n"
+    "🔹 <b> Foydalanuvchi boshqaruvi</b>\n\n"
+    
+    "<b>/priv</b> — Foydalanuvchiga imtiyoz beradi\n"
+    "<b>/priv_del</b> — Imtiyozni olib tashlaydi\n"
+    "<b>/delson</b> — Qo‘shgan odam sonini 0 qiladi\n"
+    "<b>/deforce</b> — Force add ma’lumotlarini tozalaydi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
     "🧹 <b>Tozalash</b>\n"
-    "• <b>/clean</b> (reply yoki @username) — 🧽 Foydalanuvchi statistikasini tozalaydi va unmute qiladi.\n"
-    "• <b>/unmute</b> (reply yoki @username) — 🔓 Foydalanuvchi unmute qiladi.\n\n"
+    "<b>/clean</b> —  Statistikani tozalaydi + unmute qiladi\n"
+    "<b>/unmute</b> — Faqat muteni ochadi\n\n"
+    
+    "━━━━━━━━━━━━━━━━━━\n\n"
 
-    "👮 <b>BOT ADMINLARI</b>\n"
-    "• <b>/botadmin_add</b> (reply yoki @username) — ➕ Bot admin qo‘shish.\n"
-    "• <b>/botadmin_del</b> (reply yoki @username) — ➖ Bot adminni olib tashlash.\n"
+    "👮 <b>BOT ADMIN</b>\n\n"
+    "<b>/botadmin_add</b> — Bot admin qiladi\n"
+    "<b>/botadmin_del</b> — Bot adminni olib tashlaydi\n\n"
+    
+    "━━━━━━━━━━━━━━━━━━\n\n"
+
+    "✅ Bot avtomatik ishlaydi\n"
+    "✅ Buyruqlar reply yoki @username bilan ishlaydi\n"
+    "✅ Faqat adminlar boshqaradi"
 )
 
 
