@@ -180,7 +180,7 @@ HELP_ALL = (
     "/oyna 1\n"
     "/yopish 2\n\n"
     
-    "➡️ 1 soatda 10 ta odam kirsa — guruh 2 soatga yopiladi 🚫\n\n"
+    "➡️ 1 soatda 100 ta odam kirsa — guruh 2 soatga yopiladi 🚫\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"        
 
