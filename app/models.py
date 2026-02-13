@@ -175,3 +175,9 @@ class SavedAd(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+
+class IgnoreUsername(Base):
+    __tablename__ = "ignore_usernames"
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), primary_key=True)
+

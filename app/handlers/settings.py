@@ -27,6 +27,8 @@ ALLOW_ALL = ChatPermissions(
 
 CHANNEL_RE = re.compile(r"^@?[A-Za-z0-9_]{5,}$")
 
+_ignore_ctx: dict[int, int] = {} # admin_user_id -> chat_id
+
 def _parse_int(arg: str, min_v: int, max_v: int) -> int | None:
     arg = (arg or "").strip()
     if not arg.isdigit():
@@ -721,3 +723,21 @@ async def cmd_unmute(message: Message, db: DB, config: Config):
         await message.reply("✅ User blokdan chiqarildi.")
     else:
         await message.reply("⚠️ Userni blokdan chiqarib bo‘lmadi (botda ruxsat yetarli emas).")
+
+
+@router.message(Command("ignore"))
+async def cmd_ignore(message: Message, db: DB, config: Config):
+    if not await can_manage_bot(message, db, config):
+        return
+    if message.chat.type not in ("group", "supergroup"):
+        return
+    me = await message.bot.get_me()
+    link = f"https://t.me/{me.username}?start=ig_{message.chat.id}"
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🧩 Ignore usernames sozlash", url=link)
+    kb.adjust(1)
+    await message.reply(
+        "✅ Ignore usernames sozlash uchun quyidagi tugmani bosing:",
+        reply_markup=kb.as_markup(),
+        disable_web_page_preview=True,
+    )

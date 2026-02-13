@@ -7,8 +7,13 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from ..db import DB
 from ..config import Config
+from ..utils.access import can_manage_chat
 
 router = Router()
+
+CHANNEL_RE = re.compile(r"^@?[A-Za-z0-9_]{5,}$")
+# pending action in PM: user_id -> {"chat_id": int, "action": "add"|"del", "msg_id": int|None}
+_ig_pending: dict[int, dict] = {}
 
 def safe_html(text: str) -> str:
     # Telegram yoqtirmaydigan taglarni olib tashlaymiz, faqat <b> qoldiramiz
@@ -64,6 +69,31 @@ def _help_kb(bot_username: str, video_url: str):
     kb = InlineKeyboardBuilder()
     kb.button(text="🎥 Video qo‘llanma", url=video_url)
     kb.button(text="➕ Guruhga qo‘shish", url=f"https://t.me/{bot_username}?startgroup=true")
+    kb.adjust(1)
+    return kb.as_markup()
+
+def _ignore_menu_kb(chat_id: int):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📋 Ro‘yxat", callback_data=f"ig:list:{chat_id}")
+    kb.button(text="➕ Qo‘shish", callback_data=f"ig:add:{chat_id}")
+    kb.button(text="❌ Yopish", callback_data=f"ig:close:{chat_id}")
+    kb.adjust(2, 1)
+    return kb.as_markup()
+
+def _ignore_list_kb(chat_id: int, items: list[str]):
+    kb = InlineKeyboardBuilder()
+    # delete buttons
+    for u in items:
+        kb.button(text=f"❌ @{u}", callback_data=f"ig:rm:{chat_id}:{u}")
+    # actions
+    kb.button(text="➕ Qo‘shish", callback_data=f"ig:add:{chat_id}")
+    kb.button(text="⬅️ Orqaga", callback_data=f"ig:back:{chat_id}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+def _ignore_cancel_kb(chat_id: int):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Bekor qilish", callback_data=f"ig:cancel:{chat_id}")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -240,6 +270,48 @@ async def cmd_start(message: Message, command: CommandObject, db: DB, config: Co
     await db.touch_chat(message.chat.id, message.chat.title or "")
 
     args = (command.args or "").strip()
+    # ---- Ignore usernames panel via deep link: /start ig_<chat_id> ----
+    if args.startswith("ig_"):
+
+        if message.chat.type != "private":
+            return
+        try:
+            chat_id = int(args.split("_", 1)[1])
+        except Exception:
+            await message.answer("Noto‘g‘ri so‘rov.")
+            return
+
+        # check permission: only who can manage that chat
+        ok = await can_manage_chat(
+            message.bot,
+            chat_id,
+            message.from_user.id,
+            message.from_user.username,
+            db,
+            config
+        )
+        if not ok:
+            await message.answer("Bu guruhni sozlashga ruxsat yo‘q.")
+            return
+        await db.touch_user(
+            message.from_user.id,
+            message.from_user.username or "",
+            message.from_user.full_name or ""
+            )
+
+        await message.answer(
+            "🧩 <b>IGNORE USERNAMES</b>\n\n"
+            "Bu ro‘yxatdagi @username'lar uchun:\n"
+            "✅ /set majburiy obuna tekshiruvi o‘tkazib yuboriladi\n"
+            "✅ /kanalpost blokidan o‘tadi\n"
+            "⚠️ Lekin: ssilka/reklama/arab/so‘kinish/antiflood/antisame baribir ishlaydi.\n\n"
+            "Kerakli bo‘limni tanlang:",
+            parse_mode = "HTML",
+            reply_markup = _ignore_menu_kb(chat_id)
+        )
+        return
+
+    args = (command.args or "").strip()
     if args.startswith("force_"):
         if message.chat.type != "private":
             return
@@ -318,6 +390,174 @@ async def cmd_start(message: Message, command: CommandObject, db: DB, config: Co
     s = await db.get_or_create_settings(message.chat.id)
     await db.touch_chat(message.chat.id, message.chat.title or "")
     await message.answer(settings_text(s))
+
+@router.callback_query(F.data.startswith("ig:"))
+async def cb_ignore_panel(query: CallbackQuery, db: DB, config: Config):
+    if not query.message:
+        return
+    parts = (query.data or "").split(":")
+    if len(parts) not in (3, 4):
+        await query.answer("Noto‘g‘ri tugma.", show_alert=True)
+        return
+    _, action, chat_id_raw = parts[0], parts[1], parts[2]
+    try:
+        chat_id = int(chat_id_raw)
+    except Exception:
+        await query.answer("Noto‘g‘ri chat.", show_alert=True)
+        return
+
+    ok = await can_manage_chat(
+        query.bot,
+        chat_id,
+        query.from_user.id,
+        query.from_user.username,
+        db,
+        config
+    )
+    if not ok:
+        await query.answer("Ruxsat yo‘q.", show_alert=True)
+        return
+
+    # close
+    if action == "close":
+        try:
+            await query.message.edit_text("✅ Yopildi.")
+        except Exception:
+            pass
+        await query.answer()
+        return
+
+    if action == "back":
+        try:
+            await query.message.edit_text(
+                "Kerakli bo‘limni tanlang:",
+                reply_markup=_ignore_menu_kb(chat_id)
+            )
+        except Exception:
+            pass
+        await query.answer()
+        return
+
+    # cancel pending add/del
+    if action == "cancel":
+        _ig_pending.pop(query.from_user.id, None)
+        try:
+            await query.message.edit_text(
+                "Kerakli bo‘limni tanlang:",
+                reply_markup=_ignore_menu_kb(chat_id)
+            )
+        except Exception:
+            pass
+        await query.answer("Bekor qilindi")
+        return
+
+    # list
+    if action == "list":
+        items = await db.list_ignore_usernames(chat_id, limit=200)
+        txt = "📋 <b>Ignore ro‘yxati</b>\n\n"
+        if not items:
+            txt += "📭 Bo‘sh."
+            kb = _ignore_menu_kb(chat_id)
+        else:
+            txt += "Quyidagi username'lar /set tekshiruvini va kanalpost blokini chetlab o‘tadi.\n"
+            txt += "O‘chirish uchun ❌ tugmasini bosing."
+            kb = _ignore_list_kb(chat_id, items)
+        try:
+            await query.message.edit_text(
+                txt,
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+        except Exception:
+            pass
+        await query.answer()
+        return
+
+    if action == "rm":
+        if len(parts) != 4:
+            await query.answer("Noto‘g‘ri tugma.", show_alert=True)
+            return
+        u = (parts[3] or "").strip().lstrip("@").lower()
+        if not u:
+            await query.answer("Noto‘g‘ri username.", show_alert=True)
+            return
+        await db.remove_ignore_username(chat_id, u)
+        # refresh list
+        items = await db.list_ignore_usernames(chat_id, limit=200)
+        txt = "📋 <b>Ignore ro‘yxati</b>\n\n"
+        if not items:
+            txt += "📭 Bo‘sh."
+            kb = _ignore_menu_kb(chat_id)
+        else:
+            txt += "Quyidagi username'lar /set tekshiruvini va kanalpost blokini chetlab o‘tadi.\n"
+            txt += "O‘chirish uchun ❌ tugmasini bosing."
+            kb = _ignore_list_kb(chat_id, items)
+        try:
+            await query.message.edit_text(txt, parse_mode="HTML", reply_markup=kb)
+        except Exception:
+            pass
+        await query.answer("✅ O‘chirildi")
+        return
+
+    # add/del -> ask username
+    if action in ("add"):
+        _ig_pending[query.from_user.id] = {"chat_id": chat_id, "action": action, "msg_id": query.message.message_id}
+        prompt = (
+            "➕ @username yuboring (masalan: @mychannel)\n"
+            "Username kanalda/guruhda/userda bo‘lishi kerak."
+        )
+        try:
+            await query.message.edit_text(
+                prompt,
+                reply_markup=_ignore_cancel_kb(chat_id)
+            )
+        except Exception:
+            pass
+        await query.answer()
+        return
+
+    await query.answer("Noma’lum amal.", show_alert=True)
+
+
+@router.message(F.chat.type == "private")
+async def pm_ignore_input(message: Message, db: DB, config: Config):
+    """
+    If user is in pending ignore add/del flow, treat plain text as @username and apply.
+    """
+    if not message.from_user:
+        return
+    ctx = _ig_pending.get(message.from_user.id)
+    if not ctx:
+        return
+
+    chat_id = int(ctx["chat_id"])
+    action = ctx["action"]
+
+    ok = await can_manage_chat(
+        message.bot,
+        chat_id,
+        message.from_user.id,
+        message.from_user.username,
+        db,
+        config
+    )
+    if not ok:
+        _ig_pending.pop(message.from_user.id, None)
+        await message.answer("Bu guruhni sozlashga ruxsat yo‘q.")
+        return
+
+    raw = (message.text or "").strip()
+    if not raw or not CHANNEL_RE.match(raw):
+        await message.answer("❌ Noto‘g‘ri username. Masalan: @mychannel", reply_markup=_ignore_cancel_kb(chat_id))
+        return
+
+    u = raw.lstrip("@").lower()
+
+    if action == "add":
+        await db.add_ignore_username(chat_id, u)
+        await message.answer(f"✅ Qo‘shildi: @{u}", reply_markup=_ignore_menu_kb(chat_id))
+
+    _ig_pending.pop(message.from_user.id, None)
 
 @router.message(Command("help"))
 async def cmd_help(message: Message, db: DB, config: Config):

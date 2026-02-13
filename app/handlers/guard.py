@@ -98,6 +98,33 @@ def _normalize_for_badwords(text: str) -> str:
 def _get_text(message: Message) -> str:
     return message.text or message.caption or ""
 
+def _origin_usernames(message: Message) -> list[str]:
+    res: list[str] = []
+
+    # 1) От имени чата/канала
+    if message.sender_chat:
+        u = (getattr(message.sender_chat, "username", "") or "").strip().lstrip("@").lower()
+        if u:
+            res.append(u)
+
+    # 2) Старый forward_from_chat
+    if message.forward_from_chat:
+        u = (getattr(message.forward_from_chat, "username", "") or "").strip().lstrip("@").lower()
+        if u:
+            res.append(u)
+
+    # 3) Новый forward_origin.chat
+    fo = getattr(message, "forward_origin", None)
+    if fo is not None:
+        ch = getattr(fo, "chat", None)
+        if ch is not None:
+            u = (getattr(ch, "username", "") or "").strip().lstrip("@").lower()
+            if u:
+                res.append(u)
+
+    return res
+
+
 def _mention(user) -> str:
     if user.username:
         return f"@{user.username}"
@@ -311,6 +338,13 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
     text = _get_text(message)
     _remember_media(message)
 
+    origin_usernames = _origin_usernames(message)
+    is_ignored_sender = False
+    for u in origin_usernames:
+        if await db.is_ignore_username(chat_id, u):
+            is_ignored_sender = True
+            break
+
     # Команды:
     # - менеджерам/админам пропускаем (чтобы /priv @user не улетал как "ссылка")
     # - обычным юзерам проверяем "хвост" после команды (чтобы не обходили рекламу/мат)
@@ -419,7 +453,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             return
 
     # 0.5) Force kanal: если канал привязан и юзер не подписан — удаляем сообщение
-    if s.linked_channel and not tg_admin:
+    if s.linked_channel and not tg_admin and not is_ignored_sender:
         res = await _is_subscribed(message.bot, s.linked_channel, user.id)
         if res is False:
             # удаляем сообщение и даем инструкцию (тихо и без спама)
@@ -452,6 +486,8 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
 
     # 1) Канал-посты
     if s.block_channel_posts and is_channel_post(message):
+        if is_ignored_sender:
+            return
         # ✅ Исключение: если это "прикреплённый" канал из /set @kanal, то его посты не удаляем.
         linked = (s.linked_channel or "").lstrip("@").lower().strip()
         if linked:

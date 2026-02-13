@@ -18,6 +18,7 @@ from .models import (
     BotChat,
     SavedAd,
     BotUser,
+    IgnoreUsername,
 )
 class DB:
     def __init__(self, database_url: str):
@@ -503,3 +504,51 @@ class DB:
                 UserStrike.rule == rule,
             ))
             await session.commit()
+
+    async def add_ignore_username(self, chat_id: int, username: str) -> bool:
+        u = (username or "").strip().lstrip("@").lower()
+        if not u:
+            return False
+        async with self.Session() as s:
+            stmt = (
+                insert(IgnoreUsername)
+                .values(chat_id=chat_id, username=u)
+                .on_conflict_do_nothing(index_elements=["chat_id", "username"])
+            )
+            await s.execute(stmt)
+            await s.commit()
+            return True
+
+    async def remove_ignore_username(self, chat_id: int, username: str) -> bool:
+        u = (username or "").strip().lstrip("@").lower()
+        if not u:
+            return False
+        async with self.Session() as s:
+            await s.execute(
+                delete(IgnoreUsername).where(
+                    IgnoreUsername.chat_id == chat_id,
+                    IgnoreUsername.username == u
+                )
+            )
+            await s.commit()
+            return True
+
+    async def list_ignore_usernames(self, chat_id: int, limit: int = 200) -> list[str]:
+        async with self.Session() as s:
+            res = await s.execute(
+                select(IgnoreUsername.username).where(IgnoreUsername.chat_id == chat_id).limit(limit)
+            )
+            return [r[0] for r in res.all()]
+
+    async def is_ignore_username(self, chat_id: int, username: str) -> bool:
+        u = (username or "").strip().lstrip("@").lower()
+        if not u:
+            return False
+        async with self.Session() as s:
+            res = await s.execute(
+                select(IgnoreUsername).where(
+                    IgnoreUsername.chat_id == chat_id,
+                    IgnoreUsername.username == u
+                ).limit(1)
+            )
+            return res.scalar_one_or_none() is not None
