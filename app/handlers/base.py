@@ -242,7 +242,8 @@ HELP_ALL = (
     "/priv — Foydalanuvchiga imtiyoz beradi\n"
     "/priv_del — Imtiyozni olib tashlaydi\n"
     "/delson — Qo‘shgan odam sonini 0 qiladi\n"
-    "/deforce — Force add ma’lumotlarini tozalaydi\n\n"
+    "/deforce — Force add ma’lumotlarini tozalaydi\n"
+    "/ignore — Boshqa kanallar yoki botlar xabarlarini o'chirmaydi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
