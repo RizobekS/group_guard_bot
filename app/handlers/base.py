@@ -265,6 +265,17 @@ HELP_ALL = (
 )
 
 
+@router.message(Command("help"))
+async def cmd_help(message: Message, db: DB, config: Config):
+    me = await message.bot.get_me()
+
+    await message.answer(
+        safe_html(HELP_ALL),
+        reply_markup=_help_kb(me.username, config.video_url),
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+
 
 @router.message(Command("start", "holat"))
 async def cmd_start(message: Message, command: CommandObject, db: DB, config: Config):
@@ -559,17 +570,6 @@ async def pm_ignore_input(message: Message, db: DB, config: Config):
         await message.answer(f"✅ Qo‘shildi: @{u}", reply_markup=_ignore_menu_kb(chat_id))
 
     _ig_pending.pop(message.from_user.id, None)
-
-@router.message(Command("help"))
-async def cmd_help(message: Message, db: DB, config: Config):
-    me = await message.bot.get_me()
-
-    await message.answer(
-        safe_html(HELP_ALL),
-        reply_markup=_help_kb(me.username, config.video_url),
-        parse_mode="HTML",
-        disable_web_page_preview=True
-    )
 
 
 # @router.callback_query(F.data.startswith("help:"))
