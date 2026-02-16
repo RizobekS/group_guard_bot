@@ -529,8 +529,8 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             await _handle_violation(
                 message, db, config,
                 rule="antisame",
-                warn_text="bir xil xabarni qayta yubormang. Yana takrorlansa blok bo‘ladi.",
-                mute_text="bir xil xabarni qayta yuborganingiz uchun bloklandingiz.",
+                warn_text=f"{minutes} daqiqa ichida bir xil xabarni takrorlab yuborish mumkin emas. Yana takrorlansa blok bo‘ladi.",
+                mute_text=f"{minutes} daqiqa ichida bir xil xabarni qayta yuborganingiz uchun bloklandingiz.",
                 mute_minutes=120
             )
             return

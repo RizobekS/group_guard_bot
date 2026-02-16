@@ -220,6 +220,8 @@ HELP_ALL = (
     
     "➡️ Kanalga obuna bo‘lmagan foydalanuvchi yozolmaydi 🚫\n\n"
     
+    "/ignore — Boshqa kanallar yoki botlar xabarlarini o'chirmaydi\n\n"
+    
     "━━━━━━━━━━━━━━━━━━\n\n" 
 
     "👥 <b>FORCE ADD MAJBURIY ODAM QO‘SHISH</b>\n\n"
@@ -228,11 +230,11 @@ HELP_ALL = (
     
     "/add 3 — 3 ta odam qo‘shsa yozadi\n"
     "/add off — Majburiy qo‘shishni o‘chiradi\n"
+    "/text_time 30 — Matn o‘chish vaqti (soniya)\n"
     "━━━\n"
     "🔹 <b>Ogohlantirish matni</b>\n\n"
     
     "/textforce matn — Ogohlantirish matni.\n"
-    "/text_time 30 — Matn o‘chish vaqti (soniya)\n"
     "/text_repeat 1h — Takrorlash vaqti 1h/30m/60s\n"
     "/text_repeat_time soniya — Takrorlash matnni o'chish vaqti.\n"
     "/text_repeat 0 — Takrorlashni o‘chiradi\n"
@@ -242,8 +244,7 @@ HELP_ALL = (
     "/priv — Foydalanuvchiga imtiyoz beradi\n"
     "/priv_del — Imtiyozni olib tashlaydi\n"
     "/delson — Qo‘shgan odam sonini 0 qiladi\n"
-    "/deforce — Force add ma’lumotlarini tozalaydi\n"
-    "/ignore — Boshqa kanallar yoki botlar xabarlarini o'chirmaydi\n\n"
+    "/deforce — Force add ma’lumotlarini tozalaydi\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
