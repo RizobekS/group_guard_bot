@@ -83,6 +83,7 @@ async def _resolve_target_user_id(message: Message, db: DB) -> int | None:
     if not arg:
         return None
 
+
     # поддержим и "username" и "@username"
     if arg.startswith("@") or arg.isalnum() or "_" in arg:
         uid = await db.get_user_id_by_username(arg)

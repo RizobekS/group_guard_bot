@@ -484,6 +484,7 @@ async def _process(message: Message, db: DB, antiflood, config: Config):
             return
             # res is None -> не можем проверить, не блокируем (иначе заблочим всех из-за прав бота)
 
+
     # 1) Канал-посты
     if s.block_channel_posts and is_channel_post(message):
         if is_ignored_sender:

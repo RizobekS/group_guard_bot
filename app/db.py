@@ -120,6 +120,7 @@ class DB:
                 obj.last_seen_at = now
             await session.commit()
 
+
     async def get_user_id_by_username(self, username: str) -> int | None:
         """
         Найти user_id по username, который бот уже видел.
