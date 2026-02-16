@@ -132,8 +132,8 @@ HELP_ALL = (
 
     "⚙️ <b>Asosiy buyruqlar</b>\n\n"
     
-    "/help — Hozirgi faol sozlamalar (ON/OFF)\n"
-    "/holat — Barcha buyruqlar ro‘yxati\n\n"
+    "/help — Barcha buyruqlar ro‘yxati\n"
+    "/holat — Hozirgi faol sozlamalar (ON/OFF)\n\n"
     
     "━━━━━━━━━━━━━━━━━━\n\n"
 
