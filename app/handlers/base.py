@@ -236,7 +236,7 @@ HELP_ALL = (
     
     "/textforce matn — Ogohlantirish matni.\n"
     "/text_repeat 1h — Takrorlash vaqti 1h/30m/60s\n"
-    "/text_repeat_time soniya — Takrorlash matnni o'chish vaqti.\n"
+    "/text_repeat_time soniya — Matnni o'chish vaqti.\n"
     "/text_repeat 0 — Takrorlashni o‘chiradi\n"
     "━━━\n"
     "🔹 <b> Foydalanuvchi boshqaruvi</b>\n\n"
