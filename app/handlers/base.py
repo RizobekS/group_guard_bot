@@ -353,42 +353,37 @@ async def cmd_start(message: Message, command: CommandObject, db: DB, config: Co
     me = await message.bot.get_me()
     if message.chat.type == "private":
         text = (
-            "👋 Salom! \n"
-            "Sizning guruhingizni xavfsiz, tartibli va samarali boshqarish uchun mo‘ljallangan 💎 Guruh Himoya Boti siz bilan!\n\n"
+            "👋 Assalomu alaykum! \n\n"
+            
+            "🔐 <b>GURUH HIMOYA BOT</b> ga xush kelibsiz.\n\n"
+            
+            "<b>24/7 avtomatik xavfsizlik tizimi.</b>\n"
+            "Spam, reklama, flood va raidlar endi muammo emas.\n\n"
+
+            "─────────────────\n\n"
+            
+            "🛡 <b>Himoya imkoniyatlari</b>\n\n"
+            
+            "⚡️ Anti-Spam\n"
+            "🌊 Anti-Flood\n"
+            "♻️ Anti-Same\n"
+            "🧯 Anti-Raid\n"
+            "📢 Majburiy kanal\n"
+            "👥 Force Add\n\n"
+
+            "─────────────────\n\n"
+            
+            "🚀 <b>Ishga tushirish</b>\n\n"
+            
+            "1️⃣ Botni superguruhga qo‘shing\n"
+            "2️⃣ Admin huquqini bering\n\n"
+
+            "<b>Himoya darhol faollashadi.</b>\n\n"
 
             "─────────────────\n\n"
 
-            "⚡ Tez ishga tushirish\n"
-            "1️⃣ Meni superguruhga qo‘shing\n"
-            "2️⃣ Menga Admin huquqini bering\n\n"
-
-            "➡️ Shunda bot darhol ishlay boshlaydi va guruhingizni himoya qiladi.\n\n"
-
-            "─────────────────\n\n"
-
-            "📌 Botning asosiy imkoniyatlari\n"
-            "• 🔒 Spam va reklama xabarlarini avtomatik bloklash\n"
-            "• 🌊 Ketma-ket xabarlar (Anti-Flood) nazorati\n"
-            "• ♻️ Bir xil xabarlarni takrorlashni oldini olish(Anti - Same)\n"
-            "• 🧯 Birdaniga ko‘p odam kirishidan himoya(Anti - Raid)\n"
-            "• 📢 Majburiy kanal obuna va odam qo‘shish(Force Add)\n"
-            "• 📊 Guruh statistikasini ko‘rish va foydalanuvchilarni boshqarish\n\n"
-
-            "─────────────────\n\n"
-
-            "❓ Buyruqlarni ko‘rish • /help — barcha buyruqlar ro‘yxati\n\n"
-
-            "─────────────────\n\n"
-
-            "👮 Admin bilan bog‘lanish\n"
-            f"• Admin: @{config.owner_username}\n"
-            "• Savol, taklif yoki muammo bo‘lsa — admin bilan bog‘laning\n\n"
-
-            "─────────────────\n\n"
-            "💡 Eslatma\n"
-            "- Botni superguruhga qo‘shish va admin qilish shart\n"
-            "- Foydalanuvchi /start bosgan zahoti bot avtomatik ishga tushadi\n"
-            "- Guruh 24/7 to‘liq nazorat ostida bo‘ladi"
+            "📖 Buyruqlar: /help\n"
+            "👮 Admin: @shaxzod_733"
         )
         await db.touch_user(
             message.from_user.id,
@@ -396,7 +391,7 @@ async def cmd_start(message: Message, command: CommandObject, db: DB, config: Co
             message.from_user.full_name or ""
         )
         await db.touch_chat(message.chat.id, message.chat.title or "")
-        await message.answer(text, reply_markup=_add_to_group_kb(me.username, config.video_url))
+        await message.answer(text, parse_mode="HTML", reply_markup=_add_to_group_kb(me.username, config.video_url))
         return
 
     # guruhda /start ishlatilsa: holatni ko‘rsatib qo‘yamiz
