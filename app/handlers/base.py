@@ -527,7 +527,11 @@ async def cb_ignore_panel(query: CallbackQuery, db: DB, config: Config):
     await query.answer("Noma’lum amal.", show_alert=True)
 
 
-@router.message(F.chat.type == "private")
+@router.message(
+    F.chat.type == "private",
+    F.text,                       # только текст
+    ~F.text.startswith("/")        # НЕ команды
+)
 async def pm_ignore_input(message: Message, db: DB, config: Config):
     """
     If user is in pending ignore add/del flow, treat plain text as @username and apply.
