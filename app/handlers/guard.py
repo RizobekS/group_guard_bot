@@ -293,7 +293,11 @@ async def _handle_violation(
         await _send_temp(message, warn_full, seconds=bot_msg_delete_sec)
         return
 
-    count = await db.hit_strike(chat_id, user.id, rule=rule, window_sec=strike_window_sec)
+    try:
+        count = await db.hit_strike(chat_id, user.id, rule=rule, window_sec=strike_window_sec)
+    except Exception as e:
+        print(f"[hit_strike] failed chat={chat_id} user={user.id} rule={rule}: {type(e).__name__}: {e}")
+        count = 1
 
     if count == 1:
         await _send_temp(message, warn_full, seconds=bot_msg_delete_sec)

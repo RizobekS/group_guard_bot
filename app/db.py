@@ -495,7 +495,15 @@ class DB:
                     UserStrike.rule == rule,
                 )
             )
-            return int(res.scalar_one())
+
+            cnt = res.scalar_one_or_none()
+            if cnt is None:
+                # Фолбэк: если по какой-то причине запись не видна/не создалась — создаём руками
+                session.add(UserStrike(chat_id=chat_id, user_id=user_id, rule=rule, count=1, last_at=now))
+                await session.commit()
+                return 1
+
+            return int(cnt)
 
     async def reset_strike(self, chat_id: int, user_id: int, rule: str) -> None:
         async with self.Session() as session:
